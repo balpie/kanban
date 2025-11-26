@@ -8,5 +8,8 @@ lavagna:
 utente: 
 	gcc -o bin/utente -Wall -g src/utente*.c src/common*.c
 
+doc: 
+	pandoc -o documentazione.pdf documentazione.md
+
 clean:
 	rm bin/*

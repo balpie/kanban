@@ -1,3 +1,10 @@
 # Documentazione progetto reti informatiche
 ## Strutture dati
-### 
+### Attività
+La struttura dati per le attività è di tipo `task_card_t`. Le proprietà sono:   
+- `id` è su 8 bit senza segno, in quanto ho assunto che 256 come limite massimo per il numero di card fosse più che sufficiente.   
+- `last_modified` è un timestamp, in secondi passati dall'epoch. Non ho usato direttamente `time_t` in quanto la sua codifica non è standard.    
+- `desc` è una stringa di `MAX_DIM_DESC` bit al massimo  
+
+### Lavagna  
+La lavagna è una linked list di `task_card_t`. L'inserimento all'interno della lavagna è ordinato rispetto alla colonna per facilitare la stampa in ordine per colonne

@@ -13,7 +13,7 @@ struct task_card_tipo { // 64 byte
     uint8_t id; 
     uint8_t colonna; 
     uint16_t utente; 
-    time_t last_modified;
+    uint64_t last_modified;
     char desc[MAX_DIM_DESC];
 };   
 typedef struct task_card_tipo task_card_t;
