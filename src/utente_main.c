@@ -1,7 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include "../include/common.h"
 #include "../include/utente.h"
+#include "../include/utente_net.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 void err_args(char* prg)
 {
