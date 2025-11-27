@@ -26,7 +26,6 @@ int init_listener(struct sockaddr_in* server_addr)
         perror("[init_listener] errore listen");
         exit(-1);
     }
-    printf("[init_listener]: inizializzato socket listener su porta %d", LAVAGNA_PORT);
     return listener;
 }
 
