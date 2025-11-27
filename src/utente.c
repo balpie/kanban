@@ -42,7 +42,7 @@ int create_card(task_card_t *new_card)
     clear_stdin_buffer();
     // Sicuramente ho un a-capo nel buffer
     new_card->colonna = strtoul(buf, NULL, 10);
-    printf("Inserire id utente (porta): ");
+    printf("Inserire id utente (porta > 5678): ");
     if(!fgets(buf, 5, stdin)) // 4 cifra + \n
     {
         perror("Errore fgets");
@@ -58,7 +58,7 @@ int create_card(task_card_t *new_card)
         *endlptr = '\0';
     }
     new_card->utente = strtoul(buf, NULL, 10);
-    if(new_card->utente < 1024)
+    if(new_card->utente < 5678)
     {
         printf("Porta inaccettabile\n");
         return 0;
