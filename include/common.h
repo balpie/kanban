@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define MAX_DIM_DESC 52
+#define MAX_CMD_SIZE 32
 #define TODO_COL 0
 #define DOING_COL 1
 #define DONE_COL 2
@@ -24,11 +25,13 @@ struct lavagna_tipo{
     lavagna_t* next;
 };
 
-
 // mostra singola card
 void show_card(task_card_t *);
 
 void show_lavagna(lavagna_t *l);
 
 void insert_into_lavagna(lavagna_t **l, task_card_t *card);
+
+char prompt_line(char* content);
+
 #endif

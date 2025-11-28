@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <string.h>
 
 void show_lavagna(lavagna_t *l)
 {
@@ -75,4 +76,21 @@ void show_card(task_card_t *cc)
     printf("Id utente: %u\n", cc->utente);
     printf("Ultima modifica: %s\n", buf);
     printf("Descrizione card:\n%s\n", cc->desc);
+}
+
+char prompt_line(char* content)
+{
+    char cmdbuf[MAX_CMD_SIZE];
+    printf("%s> ", content);
+    fgets(cmdbuf, MAX_CMD_SIZE, stdin);
+    char* nl = strchr(cmdbuf, '\n');
+    if(nl)
+    {
+        *nl = '\0';
+    }
+    if(strlen(cmdbuf) == 0)
+    {
+        return '\0';
+    }
+    return 'X';
 }

@@ -42,8 +42,8 @@ int main(int argc, char* argv[])
     }
     else
     {
-        printf("Connesso, premere invio per terminare");
-        getchar();
+        printf("Comando vuoto per uscire\n");
+        while(prompt_line("prova prompt utente") != '\0');
     }
     close(sd);
     return 0;

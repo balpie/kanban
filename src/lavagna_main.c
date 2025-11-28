@@ -29,8 +29,11 @@ int main()
         pthread_mutex_unlock(&lista_connessioni.m);
         count++;
         printf("Connessi: %d\n", count);
-        printf("Premi invio per uscire\n");
-        getchar();
+        printf("Comando vuoto per uscire\n");
+        if(prompt_line("prova prompt lavagna") == '\0')
+        {
+            break;
+        }
     }
     return 0;
 }   
