@@ -5,9 +5,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <unistd.h>
 
 void err_args(char* prg)
@@ -43,7 +40,22 @@ int main(int argc, char* argv[])
     else
     {
         printf("Comando vuoto per uscire\n");
-        while(prompt_line("prova prompt utente") != '\0');
+        char c;
+        do
+        {
+            c = prompt_line("prova prompt utente");
+            switch(c)
+            {
+                case CMD_NOP:
+                    break;
+                case CMD_INVALID:
+                    printf("Comando inesistente\n");
+                    break;
+                case CMD_CREATE_CARD:
+                    create_card(); 
+                    break;
+            }
+        }while(c != CMD_QUIT);
     }
     close(sd);
     return 0;

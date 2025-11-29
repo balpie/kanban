@@ -10,16 +10,19 @@ void clear_stdin_buffer()
 }
 
 // Ritorna 1 in caso di successo, 0 altrimenti
-int create_card(task_card_t *new_card)
+task_card_t *create_card()
 {
+    task_card_t *new_card = (task_card_t*)malloc(sizeof(task_card_t));
     char buf[MAX_DIM_DESC];
-    printf("Inserire id card (0 <= id < 256): ");
+    printf("Inserire id (0 <= id < 256): ");
     if(!fgets(buf, 4, stdin)) // 3 cifre + \n
     {
         perror("Errore fgets");
-        // TODO error handle
+        free(new_card);
+        return NULL;
     }
-    char* endlptr= strchr(buf, '\n');
+
+    char* endlptr = strchr(buf, '\n');
     if(!endlptr)
     { 
         clear_stdin_buffer();
@@ -36,7 +39,8 @@ int create_card(task_card_t *new_card)
     if(!fgets(buf, 2, stdin)) // 1 cifra + \n
     {
         perror("Errore fgets");
-        return 0;
+        free(new_card);
+        return NULL;
     }
     buf[1] = '\0';
     clear_stdin_buffer();
@@ -46,7 +50,8 @@ int create_card(task_card_t *new_card)
     if(!fgets(buf, 5, stdin)) // 4 cifra + \n
     {
         perror("Errore fgets");
-        return 0;
+        free(new_card);
+        return NULL;
     }
     endlptr = strchr(buf, '\n');
     if(!endlptr)
@@ -61,13 +66,15 @@ int create_card(task_card_t *new_card)
     if(new_card->utente < 5678)
     {
         printf("Porta inaccettabile\n");
-        return 0;
+        free(new_card);
+        return NULL;
     }
     printf("Inserire la descrizione dell'attività, da terminare con a-capo. Massimo 51 caratteri:\n");
     if(!fgets(buf, MAX_DIM_DESC, stdin))
     {
         perror("Errore fgets");
-        return 0;
+        free(new_card);
+        return NULL;
     }
     endlptr = strchr(buf, '\n');
     if(!endlptr)
@@ -80,5 +87,5 @@ int create_card(task_card_t *new_card)
     }
     new_card->last_modified = time(NULL);
     strcpy(new_card->desc, buf);
-    return 1;
+    return new_card;
 }

@@ -3,10 +3,10 @@
 all: utente lavagna
 
 lavagna:
-	gcc -o bin/lavagna -Wall -g src/lavagna*.c src/common*.c
+	gcc -o bin/lavagna -Wall -g src/lavagna*.c src/common*.c -lpthread
 
 utente: 
-	gcc -o bin/utente -Wall -g src/utente*.c src/common*.c
+	gcc -o bin/utente -Wall -g src/utente*.c src/common*.c -lpthread
 
 doc: 
 	pandoc -o documentazione.pdf documentazione.md

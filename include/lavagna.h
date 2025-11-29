@@ -1,9 +1,14 @@
 #ifndef LAVAGNA_H
 #define LAVAGNA_H
 
+#include "lavagna_net.h"
 /*
  * FAI UDP, TANTO C'E GIA PING E PONG 
  */
+// STAMPA_UTENTI_CONNESSI
+// Comando che permette di visualizzare il 
+// contenuto della linked list con all'interno le connessioni
+void stampa_utenti_connessi(connection_l_e *head);
   
 // MOVE_CARD:
 // Sposta una card da una colonna ad un'altra

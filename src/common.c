@@ -6,19 +6,19 @@
 
 void show_lavagna(lavagna_t *l)
 {
-    printf("\tTO DO\n");
+    printf("-----TO DO-----");
     while(l && l->card.colonna == TODO_COL)
     {
         show_card(&(l->card));
         l = l->next;
     }
-    printf("\tDOING\n");
+    printf("-----DOING-----");
     while(l && l->card.colonna == DOING_COL)
     {
         show_card(&(l->card));
         l = l->next;
     }
-    printf("\tDONE\n");
+    printf("-----DONE-----");
     while(l && l->card.colonna == DONE_COL)
     {
         show_card(&(l->card));
@@ -78,6 +78,17 @@ void show_card(task_card_t *cc)
     printf("Descrizione card:\n%s\n", cc->desc);
 }
 
+void to_upper_case(char* str) 
+{
+    for(char* ptr = str; *ptr != '\0'; ptr++)
+    {
+        if(*ptr >= 'a' && *ptr <= 'z')
+        {
+            *ptr -= 'a' - 'A';
+        }
+    }
+}
+
 char prompt_line(char* content)
 {
     char cmdbuf[MAX_CMD_SIZE];
@@ -88,9 +99,24 @@ char prompt_line(char* content)
     {
         *nl = '\0';
     }
+    // Forse meglio fare funzione char eval_cmdbuf(char*)?
+    to_upper_case(cmdbuf);
     if(strlen(cmdbuf) == 0)
     {
-        return '\0';
+        return CMD_NOP;
     }
-    return 'X';
+    if(strcmp(cmdbuf, CMD_STR_CREATE_CARD) == 0)
+    {
+        return CMD_CREATE_CARD;
+    }
+    if(strcmp(cmdbuf, CMD_STR_QUIT) == 0)
+    {
+        return CMD_QUIT;
+    }
+    if(strcmp(cmdbuf, CMD_STR_STAMPA_UTENTI_CONNESSI) == 0)
+    {
+        return CMD_STAMPA_UTENTI_CONNESSI;
+    }
+    return CMD_INVALID;
 }
+

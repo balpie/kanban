@@ -2,8 +2,29 @@
 #include "../include/lavagna.h"
 #include "../include/lavagna_net.h"
 #include <stdio.h>
+#include <pthread.h>
 
 connection_l lista_connessioni;
+
+void* prompt_cycle()
+{
+    do{
+        char cmd = prompt_line("lavagna");
+        switch(cmd)
+        {
+            case CMD_NOP:
+                break;
+            case CMD_INVALID:
+                printf("Comando inesistente\n");
+                break;
+            case CMD_STAMPA_UTENTI_CONNESSI:
+                stampa_utenti_connessi(lista_connessioni.head);
+                break;
+        }
+    }while(1);
+    //TODO Fai effettivamente...
+    printf("FINE!!!\n");  
+}
 
 int main()
 {
@@ -18,6 +39,8 @@ int main()
     /*
      * da fare nel thread
      */
+    pthread_t prompt_thread;
+    pthread_create(&prompt_thread, NULL, prompt_cycle, NULL);
     int count = 0;
     while(1)
     {
@@ -28,13 +51,6 @@ int main()
         insert_connection(&(lista_connessioni.head), &new_connection, new_sock);
         pthread_mutex_unlock(&lista_connessioni.m);
         count++;
-        printf("Connessi: %d\n", count);
-        printf("Comando vuoto per uscire\n");
-        if(prompt_line("prova prompt lavagna") == '\0')
-        {
-            break;
-        }
     }
     return 0;
 }   
-

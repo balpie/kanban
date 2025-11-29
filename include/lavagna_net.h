@@ -1,8 +1,5 @@
 #ifndef LAVAGNA_NET_H
 #define LAVAGNA_NET_H
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <pthread.h>
 #include "common_net.h"
 
 #define MAX_QUEUE 10
