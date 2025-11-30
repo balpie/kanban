@@ -73,7 +73,8 @@ void show_card(task_card_t *cc)
     struct tm *lastmod = localtime(&cc->last_modified);
     strftime(buf, 21, "%D %H:%m:%S", lastmod);
     printf("Id card: %u\n", cc->id);
-    printf("Id utente: %u\n", cc->utente);
+    printf("Id utente: "); 
+    (cc->utente) ? printf("%u\n", cc->utente) : printf("card non ancora assegnata\n");
     printf("Ultima modifica: %s\n", buf);
     printf("Descrizione card:\n%s\n", cc->desc);
 }
@@ -93,7 +94,10 @@ char prompt_line(char* content)
 {
     char cmdbuf[MAX_CMD_SIZE];
     printf("%s> ", content);
-    fgets(cmdbuf, MAX_CMD_SIZE, stdin);
+    if(!fgets(cmdbuf, MAX_CMD_SIZE, stdin)) // caso ctrl-d o errore
+    {
+        return CMD_QUIT;
+    }
     char* nl = strchr(cmdbuf, '\n');
     if(nl)
     {

@@ -39,7 +39,18 @@ int main(int argc, char* argv[])
     }
     else
     {
-        printf("Comando vuoto per uscire\n");
+        printf(">> Registrazione al server con porta %u...\n", user_port);
+        int nport = htons(user_port);
+        if(send_msg(sd, &nport, 2)) // mando al server la mia porta per registrarmi
+        {
+            printf(">> Registrazione effettuata con successo \n");
+        }
+        else
+        {
+            printf("quitting\n");
+            close(sd);
+            exit(-1);
+        }
         char c;
         do
         {

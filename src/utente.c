@@ -46,29 +46,7 @@ task_card_t *create_card()
     clear_stdin_buffer();
     
     new_card->colonna = strtoul(buf, NULL, 10);
-    printf("Inserire id utente (porta > 5678): ");
-    if(!fgets(buf, 5, stdin)) // 4 cifra + \n
-    {
-        perror("Errore fgets");
-        free(new_card);
-        return NULL;
-    }
-    endlptr = strchr(buf, '\n');
-    if(!endlptr)
-    { 
-        clear_stdin_buffer();
-    }
-    else
-    {
-        *endlptr = '\0';
-    }
-    new_card->utente = strtoul(buf, NULL, 10);
-    if(new_card->utente < 5678)
-    {
-        printf("Porta inaccettabile\n");
-        free(new_card);
-        return NULL;
-    }
+    new_card->utente = 0; // ancora non è assegnata a nessun utente
     printf("Inserire la descrizione dell'attività, da terminare con a-capo. Massimo 51 caratteri:\n");
     if(!fgets(buf, MAX_DIM_DESC, stdin))
     {
@@ -76,7 +54,6 @@ task_card_t *create_card()
         free(new_card);
         return NULL;
     }
-
     endlptr = strchr(buf, '\n');
     if(!endlptr)
     { 

@@ -29,19 +29,18 @@ int init_listener(struct sockaddr_in* server_addr)
 }
 
 // inserimento in testa
-void insert_connection(connection_l_e **headptr, struct sockaddr_in *addr, int socket)
+void insert_connection(connection_l_e **headptr, int socket, uint16_t port_id, uint32_t addr)
 {
     connection_l_e *nuovo = (connection_l_e*)malloc(sizeof(connection_l_e));
     nuovo->socket = socket;
-    nuovo->indirizzo.sin_family = addr->sin_family;
-    nuovo->indirizzo.sin_port = addr->sin_port;
-    nuovo->indirizzo.sin_addr.s_addr = addr->sin_addr.s_addr;
+    nuovo->port_id = port_id;
+    nuovo->addr = addr;
     nuovo->next = *headptr;
     *headptr = nuovo;
 }
 
 // ritorna 0 se rimozione fallita, 1 altrimenti
-int remove_connection(connection_l_e **headptr, struct sockaddr_in *addr)
+int remove_connection(connection_l_e **headptr, int sock)
 {
     if(!*headptr) // nulla da rimuovere
     { 
@@ -49,9 +48,7 @@ int remove_connection(connection_l_e **headptr, struct sockaddr_in *addr)
     }
     connection_l_e* iter = *headptr;
     connection_l_e* prec = NULL;
-    while(iter 
-            && addr->sin_port != iter->indirizzo.sin_port 
-            && addr->sin_addr.s_addr != iter->indirizzo.sin_addr.s_addr)
+    while(iter && iter->socket != sock)
     {
         prec = iter;
         iter = iter->next;

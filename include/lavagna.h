@@ -2,6 +2,10 @@
 #define LAVAGNA_H
 
 #include "lavagna_net.h"
+
+// Massimo 100 processi client serviti contemporaneamente
+#define MAX_SERVER_PROCS 100
+
 /*
  * FAI UDP, TANTO C'E GIA PING E PONG 
  */
