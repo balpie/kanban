@@ -42,9 +42,9 @@ task_card_t *create_card()
         free(new_card);
         return NULL;
     }
-    buf[1] = '\0';
+    buf[1] = '\0'; // Sicuramente ho un a-capo nel buffer
     clear_stdin_buffer();
-    // Sicuramente ho un a-capo nel buffer
+    
     new_card->colonna = strtoul(buf, NULL, 10);
     printf("Inserire id utente (porta > 5678): ");
     if(!fgets(buf, 5, stdin)) // 4 cifra + \n
@@ -76,6 +76,7 @@ task_card_t *create_card()
         free(new_card);
         return NULL;
     }
+
     endlptr = strchr(buf, '\n');
     if(!endlptr)
     { 

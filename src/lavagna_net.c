@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-
 // ritorna il socket listener o -1 al fallimento
 int init_listener(struct sockaddr_in* server_addr)
 {
