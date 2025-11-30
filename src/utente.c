@@ -14,10 +14,10 @@ task_card_t *create_card()
 {
     task_card_t *new_card = (task_card_t*)malloc(sizeof(task_card_t));
     char buf[MAX_DIM_DESC];
-    printf("Inserire id (0 <= id < 256): ");
+    printf(">> inserire id (0 <= id < 256): ");
     if(!fgets(buf, 4, stdin)) // 3 cifre + \n
     {
-        perror("Errore fgets");
+        perror(">! errore fgets, la card non è stata creata");
         free(new_card);
         return NULL;
     }
@@ -32,13 +32,13 @@ task_card_t *create_card()
         *endlptr = '\0';
     }
     new_card->id = strtoul(buf, NULL, 10);
-    printf("0: To Do\n");
-    printf("1: Doing\n");
-    printf("2: Done\n");
-    printf("Inserire colonna: ");
+    printf("\t0: To Do\n");
+    printf("\t1: Doing\n");
+    printf("\t2: Done\n");
+    printf(">> inserire colonna: ");
     if(!fgets(buf, 2, stdin)) // 1 cifra + \n
     {
-        perror("Errore fgets");
+        perror(">! errore fgets, la card non è stata creata");
         free(new_card);
         return NULL;
     }
@@ -47,10 +47,10 @@ task_card_t *create_card()
     
     new_card->colonna = strtoul(buf, NULL, 10);
     new_card->utente = 0; // ancora non è assegnata a nessun utente
-    printf("Inserire la descrizione dell'attività, da terminare con a-capo. Massimo 51 caratteri:\n");
+    printf(">> inserire la descrizione dell'attività, da terminare con a-capo. Massimo 51 caratteri:\n");
     if(!fgets(buf, MAX_DIM_DESC, stdin))
     {
-        perror("Errore fgets");
+        perror(">! errore fgets, la card non è stata creata");
         free(new_card);
         return NULL;
     }

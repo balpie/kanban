@@ -25,7 +25,7 @@ void* prompt_cycle(void *)
             case CMD_NOP:
                 break;
             case CMD_INVALID:
-                printf("Comando inesistente\n");
+                printf(">> comando inesistente\n");
                 break;
             case CMD_STAMPA_UTENTI_CONNESSI:
                 pthread_mutex_lock(&lista_connessioni.m);
