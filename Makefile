@@ -2,10 +2,13 @@
 
 all: utente lavagna
 
-lavagna:
+bin:
+	mkdir -p bin
+
+lavagna: bin
 	gcc -o bin/lavagna -Wall -g src/lavagna*.c src/common*.c -lpthread
 
-utente: 
+utente: bin
 	gcc -o bin/utente -Wall -g src/utente*.c src/common*.c -lpthread
 
 doc: 
