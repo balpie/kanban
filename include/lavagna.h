@@ -14,6 +14,7 @@
 // contenuto della linked list con all'interno le connessioni
 void stampa_utenti_connessi(connection_l_e *head);
   
+void cleanup(int, connection_l_e**); 
 // MOVE_CARD:
 // Sposta una card da una colonna ad un'altra
 // Viene eseguita ogni volta che viene ricevuta 

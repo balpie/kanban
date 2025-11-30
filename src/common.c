@@ -96,6 +96,7 @@ char prompt_line(char* content)
     printf("%s> ", content);
     if(!fgets(cmdbuf, MAX_CMD_SIZE, stdin)) // caso ctrl-d o errore
     {
+        printf("\n");
         return CMD_QUIT;
     }
     char* nl = strchr(cmdbuf, '\n');

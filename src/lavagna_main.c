@@ -13,6 +13,7 @@ struct client_info{
 
 connection_l lista_connessioni;
 int n_connessioni = 0;
+int sock_listener; // in modo da poter terminare dai thread
 
 void* prompt_cycle(void *)
 {
@@ -33,9 +34,9 @@ void* prompt_cycle(void *)
                 break;
         }
     }while(cmd != CMD_QUIT);
-    //TODO Fai effettivamente...
-    printf("FINE!!!\n");  
-    return NULL;
+    printf(">> ripulisco socket e heap...\n");  
+    cleanup(sock_listener, &lista_connessioni.head);
+    exit(0);
 }
   
 // argomento passato: connection_l relativo al client da servire
@@ -60,7 +61,7 @@ int main() // main thread: listener
 {
     struct sockaddr_in listener_addr;
     struct sockaddr_in new_connection;
-    int sock_listener = init_listener(&listener_addr);
+    sock_listener = init_listener(&listener_addr);
     int new_sock;
     pthread_t prompt_thread;
     pthread_t server_processes[MAX_SERVER_PROCS];
