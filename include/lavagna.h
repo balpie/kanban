@@ -6,10 +6,21 @@
 // Massimo 100 processi client serviti contemporaneamente
 #define MAX_SERVER_PROCS 100
 
-/*
- * FAI UDP, TANTO C'E GIA PING E PONG 
- */
-// STAMPA_UTENTI_CONNESSI
+struct client_info{
+    int socket;
+    uint32_t addr; // network order
+};
+
+// Variabili globali
+extern connection_l lista_connessioni;
+extern int n_connessioni;
+extern int sock_listener; // in modo da poter terminare dai thread
+
+// THREADS
+void* prompt_cycle(void *);
+
+void* serv_client(void* cl_info);
+// STAMPA_UTENTI_CONNESS
 // Comando che permette di visualizzare il 
 // contenuto della linked list con all'interno le connessioni
 void stampa_utenti_connessi(connection_l_e *head);

@@ -67,6 +67,30 @@ void insert_into_lavagna(lavagna_t **l, task_card_t *card)
     new->next = iter;
 }
 
+lavagna_t* remove_from_lavagna(lavagna_t **l, uint8_t id)
+{
+    lavagna_t* iter = *l;
+    lavagna_t* prec = NULL;
+    while(iter && iter->card.id != id)
+    {
+        prec = iter;
+        iter = iter->next;
+    }
+    if(!iter) // arrivato in fondo senza trovare la card che cercavo
+    { 
+        return NULL;
+    }
+    if(!prec) // rimozione in testa
+    {
+        *l = (*l)->next;
+        return iter;
+    }
+    // rimozione altrove
+    prec->next = iter->next;
+    return iter;
+}
+
+
 void show_card(task_card_t *cc)
 {
     char buf[21];

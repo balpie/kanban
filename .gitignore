@@ -1,3 +1,4 @@
+*.vim
 *.pdf
 bin/*
 prova*

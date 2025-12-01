@@ -4,7 +4,7 @@
   
 // CREATE_CARD:
 // Crea carta (con id, colonna, e descrizione prese da tastiera)
-task_card_t* create_card();
+task_card_t* create_card(); // TODO: send card
   
 // SHOW_LAVAGNA:
 // Viene mostrata la lavagna, con le card assegnate ognuna alla giusta colonna
@@ -12,15 +12,6 @@ task_card_t* create_card();
 // PONG_LAVAGNA:
 // Messaggio di risposta a PING_USER
 
-// HELLO:
-// Registra l'utente alla lavagna
-
-// QUIT:
-// Chiude la connessione con la lavagna
-  
-// SHOW_LAVAGNA:
-// Viene mostrata la lavagna, con le card assegnate ognuna alla giusta colonna
-  
 // CHOSE_USER
 // Messaggio da inviare tra utenti per decidere chi prenderà la card
 // randomizzare il costo, card a costo minore, a parità di costo porta minore

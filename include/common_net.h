@@ -8,6 +8,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+// funzione che inizializza socket listener
+// ritorna il socket listener o -1 al fallimento
+int init_listener(struct sockaddr_in*);
+
 // manda size byte di msg via sock
 // ritorna 1 se eseguita con successo 0 altrimenti
 int send_msg(int, void*, size_t);

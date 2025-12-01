@@ -42,10 +42,6 @@ void insert_connection(connection_l_e **headptr, int socket, uint16_t port_id, u
 // ritorna 0 se rimozione fallita, 1 altrimenti
 int remove_connection(connection_l_e **headptr, int sock)
 {
-    if(!*headptr) // nulla da rimuovere
-    { 
-        return 0;
-    }
     connection_l_e* iter = *headptr;
     connection_l_e* prec = NULL;
     while(iter && iter->socket != sock)
