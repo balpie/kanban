@@ -1,5 +1,35 @@
+#include <string.h>
 #include <stdio.h>
 #include "../include/common_net.h"
+
+// Usando il preprocessore funziona sia per macchine che
+// adottano little endian che per macchine che adottano 
+// big endian, ammesso che usino gcc
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+uint64_t htonll(uint64_t num)
+{
+    uint32_t last32 = htonl((uint32_t)(num >> 32));// hton ultimi 32 bit
+    uint32_t first32 = htonl((uint32_t)num);// hton primi 32 bit
+    uint64_t retv;
+    memcpy((void*)&retv, (void*)&first32, 4);
+    // Converto prima perchè altrimenti somma 4*sizeof(retv) = 32 byte
+    memcpy(((char*)(&retv) + 4), (void*)&last32, 4); 
+    return retv;
+}
+uint64_t ntohll(uint64_t num)
+{
+    return htonll(num);
+}
+#else
+uint64_t htonll(uint64_t num)
+{
+    return num;
+}
+uint64_t ntohll(uint64_t num)
+{
+    return num;
+}
+#endif
 
 // manda size byte di msg via sock
 // ritorna 1 se eseguita con successo
