@@ -1,4 +1,5 @@
 *.vim
 *.pdf
+test.c
 bin/*
 prova*

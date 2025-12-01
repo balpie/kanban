@@ -4,6 +4,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char *CMD_STR_ARR[] = {
+    CMD_STR_CREATE_CARD,
+    CMD_STR_QUIT,
+    CMD_STR_STAMPA_UTENTI_CONNESSI
+};
+
+const char CMD_ARR[] = {
+    CMD_CREATE_CARD,
+    CMD_QUIT,
+    CMD_STAMPA_UTENTI_CONNESSI
+};
+
 void show_lavagna(lavagna_t *l)
 {
     printf("-----TO DO-----");
@@ -113,6 +125,35 @@ void to_upper_case(char* str)
         }
     }
 }
+  
+// valuta comandi non vuoti e ritorna carattere associato al comando
+char eval_cmdbuf(char* cmd) 
+{
+    char* nl = strchr(cmd, '\n');
+    if(nl)
+    {
+        *nl = '\0';
+    }
+    to_upper_case(cmd);
+    int count_matches = 0;
+    int match = -1;
+    for(int i = 0; i < sizeof(CMD_STR_ARR)/sizeof(CMD_STR_ARR[0]); i++)
+    { // confronto la mia stringa con tutti i possibili comandi
+        int dim_cmd = strlen(cmd);
+        int dim_curr = strlen(CMD_STR_ARR[i]);
+        if(dim_cmd > dim_curr) 
+            continue;
+        if(strncmp(cmd, CMD_STR_ARR[i], dim_cmd) == 0)
+        {
+            count_matches++;
+            match = i;
+        }
+    }
+    if(count_matches == 1) // se il match è uno (solo)
+        return CMD_ARR[match]; // ritorno il comando
+    else
+        return CMD_INVALID; // altrimenti c'è un errore di sintassi
+}
 
 char prompt_line(char* content)
 {
@@ -123,29 +164,6 @@ char prompt_line(char* content)
         printf("\n");
         return CMD_QUIT;
     }
-    char* nl = strchr(cmdbuf, '\n');
-    if(nl)
-    {
-        *nl = '\0';
-    }
-    // Forse meglio fare funzione char eval_cmdbuf(char*)?
-    to_upper_case(cmdbuf);
-    if(strlen(cmdbuf) == 0)
-    {
-        return CMD_NOP;
-    }
-    if(strcmp(cmdbuf, CMD_STR_CREATE_CARD) == 0)
-    {
-        return CMD_CREATE_CARD;
-    }
-    if(strcmp(cmdbuf, CMD_STR_QUIT) == 0)
-    {
-        return CMD_QUIT;
-    }
-    if(strcmp(cmdbuf, CMD_STR_STAMPA_UTENTI_CONNESSI) == 0)
-    {
-        return CMD_STAMPA_UTENTI_CONNESSI;
-    }
-    return CMD_INVALID;
+    return eval_cmdbuf(cmdbuf);
 }
 
