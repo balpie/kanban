@@ -8,26 +8,35 @@
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 uint64_t htonll(uint64_t num)
 {
-    uint32_t last32 = htonl((uint32_t)(num >> 32));// hton ultimi 32 bit
-    uint32_t first32 = htonl((uint32_t)num);// hton primi 32 bit
+    printf("\ndbg[htonll]> macchina big endian\n");
+    return num;
+}
+uint64_t ntohll(uint64_t num)
+{
+    return num;
+}
+#else
+uint64_t htonll(uint64_t num)
+{
+    /*
+     *   least_sign    most_sign
+     * | B0 B1 B2 B3 | B4 B5 B6 B7 |
+     *
+     * hton(least_sign) hton(most_sign)
+     * | B3 B2 B1 B0 | B7 B6 B5 B4 |
+     */
+    printf("\ndbg[htonll]> macchina little endian\n");
+    uint32_t most_sign = htonl((num >> 32));// hton ultimi 32 bit
+    uint32_t least_sign = htonl(num);// hton primi 32 bit
     uint64_t retv;
-    memcpy((void*)&retv, (void*)&first32, 4);
+    memcpy((void*)&retv, (void*)&most_sign , 4);
     // Converto prima perchè altrimenti somma 4*sizeof(retv) = 32 byte
-    memcpy(((char*)(&retv) + 4), (void*)&last32, 4); 
+    memcpy(((char*)(&retv) + 4), (void*)&least_sign, 4); 
     return retv;
 }
 uint64_t ntohll(uint64_t num)
 {
     return htonll(num);
-}
-#else
-uint64_t htonll(uint64_t num)
-{
-    return num;
-}
-uint64_t ntohll(uint64_t num)
-{
-    return num;
 }
 #endif
 
@@ -38,12 +47,12 @@ int send_msg(int sock, void* msg, size_t size)
     ssize_t sent = send(sock, msg, size, 0);
     if(sent < 0)
     {
-        perror("Errore send");
+        perror("\n>! Errore send");
         return 0;
     }
     if(sent < size)
     {
-        printf("Errore recv interlocutore");
+        printf("\n>! Errore send interlocutore:\n\tInviato %lu invece di %lu", sent, size);
         return 0;
     }
     return 1;
@@ -55,12 +64,12 @@ void* get_msg(int sock, void *buf, size_t size)
     ssize_t recived = recv(sock, buf, size, 0);
     if(recived < 0)
     {
-        perror("Errore send");
+        perror("\n>! Errore recv");
         return NULL;
     }
     if(recived < size)
     {
-        printf("Errore recv interlocutore");
+        printf("\n>! Errore recv interlocutore:\n\tRicevuto %lu invece di %lu", recived, size);
         return NULL;
     }
     return buf;

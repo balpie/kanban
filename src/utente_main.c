@@ -9,8 +9,8 @@
 
 void err_args(char* prg)
 {
-        printf("Utilizzo: %s <porta>\n", prg);
-        printf("Il parametro <porta> deve essere un intero rappresentabile su 16 bit maggiore di 5678\n");
+        printf(">! utilizzo: %s <porta>\n", prg);
+        printf(">! il parametro <porta> deve essere un intero rappresentabile su 16 bit maggiore di 5678\n");
         exit(-1);
 }
 
@@ -47,23 +47,31 @@ int main(int argc, char* argv[])
         }
         else
         {
-            printf("quitting\n");
+            printf(">> quitting\n");
             close(sd);
             exit(-1);
         }
         char c;
         do
         {
-            c = prompt_line("prova prompt utente");
+            c = prompt_line("utente");
             switch(c)
             {
                 case CMD_NOP:
                     break;
                 case CMD_INVALID:
-                    printf("Comando inesistente\n");
+                    printf(">! Comando inesistente\n");
                     break;
                 case CMD_CREATE_CARD:
-                    create_card(); 
+                    task_card_t* cc = create_card();
+                    char buffer[sizeof(*cc)]; 
+                    unsigned dim = prepare_card(cc, buffer);
+                    char instr_to_server[2]; 
+                    char instr_from_server[2];
+                    get_msg(sd, instr_from_server, 2);
+                    instr_to_server[1] = dim;
+                    send_msg(sd, instr_to_server, 2);
+                    send_msg(sd, buffer, dim);
                     break;
             }
         }while(c != CMD_QUIT);

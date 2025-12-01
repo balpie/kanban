@@ -1,4 +1,5 @@
 #include "../include/common.h"
+#include "../include/common_net.h"
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
@@ -18,19 +19,19 @@ const char CMD_ARR[] = {
 
 void show_lavagna(lavagna_t *l)
 {
-    printf("-----TO DO-----");
+    printf("\n-----TO DO-----\n");
     while(l && l->card.colonna == TODO_COL)
     {
         show_card(&(l->card));
         l = l->next;
     }
-    printf("-----DOING-----");
+    printf("-----DOING-----\n");
     while(l && l->card.colonna == DOING_COL)
     {
         show_card(&(l->card));
         l = l->next;
     }
-    printf("-----DONE-----");
+    printf("-----DONE-----\n");
     while(l && l->card.colonna == DONE_COL)
     {
         show_card(&(l->card));
@@ -45,7 +46,7 @@ void copia_card(task_card_t *src, task_card_t *dest)
     dest->colonna = src->colonna;
     dest->utente = src->utente;
     dest->last_modified = src->last_modified;
-    for(int i = 0; i < MAX_DIM_DESC; i++)
+    for(int i = 0; i < MAX_DIM_DESC; i++) // TODO strcpy !?
     {
         dest->desc[i] = src->desc[i];
     }
@@ -108,11 +109,11 @@ void show_card(task_card_t *cc)
     char buf[21];
     struct tm *lastmod = localtime(&cc->last_modified);
     strftime(buf, 21, "%D %H:%m:%S", lastmod);
-    printf("Id card: %u\n", cc->id);
-    printf("Id utente: "); 
+    printf("Id card: \t%u\n", cc->id);
+    printf("Id utente: \n\t"); 
     (cc->utente) ? printf("%u\n", cc->utente) : printf("card non ancora assegnata\n");
-    printf("Ultima modifica: %s\n", buf);
-    printf("Descrizione card:\n%s\n", cc->desc);
+    printf("Ultima modifica: \n\t%s\n", buf);
+    printf("Descrizione card:\n\t%s\n", cc->desc);
 }
 
 void to_upper_case(char* str) 
@@ -167,3 +168,44 @@ char prompt_line(char* content)
     return eval_cmdbuf(cmdbuf);
 }
 
+// serializzazione e hton dei membri numerici con sizeof > 1
+size_t prepare_card(task_card_t *card, void* buf)
+{
+    // max 63 byte
+    size_t dim_str = strlen(card->desc);
+    size_t dim = sizeof(card->id) +
+        sizeof(card->colonna) +
+        sizeof(card->utente) +
+        sizeof(card->last_modified) +
+        dim_str; // mando senza '\0'
+    uint64_t timestamp = htonll(card->last_modified);
+    uint16_t usr = htons(card->utente);
+    // copio colonna, id, e descrizione
+    memcpy(buf, (void*)card, dim_str + 2*sizeof(card->id)); 
+    buf = (char*)buf + dim_str + 2*sizeof(card->id);
+    memcpy(buf, (void*)&usr, sizeof(card->utente));
+    buf = (char*)buf + sizeof(card->utente);
+    memcpy(buf, (void*)&timestamp, sizeof(card->last_modified));
+    printf("\n[prepare_card]dbg> dim_str: %lu, dim: %lu\n", dim_str, dim);
+    return dim;
+}
+
+void unprepare_card(task_card_t *card, void* buf, size_t dim)
+{
+    memcpy((void*)&card->id, buf, 1);
+    buf = (char*)buf + 1;
+    memcpy((void*)&card->colonna, buf, 1);
+    buf = (char*)buf + 1;
+    // la dimensione della descrizione della card che arriva è pari
+    // alla dimensione totale meno la dimensione massima della descrizione
+    size_t dim_desc = dim - (sizeof(*card) - sizeof(card->desc)/sizeof(card->desc[0]));
+    printf("\ndbg> Dimensione desc: %lu\n", dim_desc);
+    memcpy(card->desc, buf, dim_desc);
+    buf += dim_desc;
+    memcpy((void*)&card->utente, buf, sizeof(card->utente));
+    card->desc[dim_desc] = '\0';
+    card->utente = ntohs(card->utente);
+    buf += sizeof(card->utente);
+    memcpy((void*)&card->last_modified, buf, sizeof(card->last_modified));
+    card->last_modified = ntohll(card->last_modified);
+}

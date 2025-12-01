@@ -10,6 +10,8 @@ connection_l lista_connessioni;
 int n_connessioni = 0;
 int sock_listener; // in modo da poter terminare dai thread
 
+lavagna_t *lavagna = NULL; // TODO aggiungi pthread_rw_lock
+
 int main() // main thread: listener
 {
     struct sockaddr_in listener_addr;

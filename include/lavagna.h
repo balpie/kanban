@@ -15,7 +15,7 @@ struct client_info{
 extern connection_l lista_connessioni;
 extern int n_connessioni;
 extern int sock_listener; // in modo da poter terminare dai thread
-
+extern lavagna_t *lavagna;
 // THREADS
 void* prompt_cycle(void *);
 

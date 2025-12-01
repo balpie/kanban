@@ -11,6 +11,9 @@
 #define DOING_COL 1
 #define DONE_COL 2
 
+// STATI
+#define STS_NOCARDS '0'
+
 // COMANDI
 #define CMD_STR_CREATE_CARD "CREATE_CARD"
 #define CMD_STR_QUIT "QUIT"
@@ -29,9 +32,9 @@
 struct task_card_tipo { // 64 byte
     uint8_t id; 
     uint8_t colonna; 
+    char desc[MAX_DIM_DESC];
     uint16_t utente; 
     int64_t last_modified;
-    char desc[MAX_DIM_DESC];
 };   
 typedef struct task_card_tipo task_card_t;
 
@@ -53,5 +56,12 @@ void insert_into_lavagna(lavagna_t **l, task_card_t *card);
 lavagna_t* remove_from_lavagna(lavagna_t **, uint8_t);
 
 char prompt_line(char*);
+
+// serializza la card
+// serializza card in buf, e ritorna la dimensione
+size_t prepare_card(task_card_t *card, void* buf); 
+
+// fa l'opposto di prepare_card
+void unprepare_card(task_card_t *card, void* buf, size_t dim);
 
 #endif
