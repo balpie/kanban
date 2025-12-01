@@ -1,6 +1,5 @@
 #ifndef LAVAGNA_H
 #define LAVAGNA_H
-
 #include "lavagna_net.h"
 
 // Massimo 100 processi client serviti contemporaneamente

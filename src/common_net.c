@@ -8,7 +8,6 @@
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 uint64_t htonll(uint64_t num)
 {
-    printf("\ndbg[htonll]> macchina big endian\n");
     return num;
 }
 uint64_t ntohll(uint64_t num)
@@ -25,7 +24,6 @@ uint64_t htonll(uint64_t num)
      * hton(least_sign) hton(most_sign)
      * | B3 B2 B1 B0 | B7 B6 B5 B4 |
      */
-    printf("\ndbg[htonll]> macchina little endian\n");
     uint32_t most_sign = htonl((num >> 32));// hton ultimi 32 bit
     uint32_t least_sign = htonl(num);// hton primi 32 bit
     uint64_t retv;

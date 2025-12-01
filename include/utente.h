@@ -4,7 +4,7 @@
   
 // CREATE_CARD:
 // Crea carta (con id, colonna, e descrizione prese da tastiera)
-task_card_t* create_card(); // TODO: send card
+task_card_t* create_card(); 
   
 // SHOW_LAVAGNA:
 // Viene mostrata la lavagna, con le card assegnate ognuna alla giusta colonna

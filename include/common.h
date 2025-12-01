@@ -4,7 +4,6 @@
 #include <time.h>   
 #include <stdint.h>
 
-#define MAX_DIM_DESC 52
 #define MAX_CMD_SIZE 32
 
 #define TODO_COL 0
@@ -29,13 +28,19 @@
 // utente
 #define CMD_CREATE_CARD 'g'
 
-struct task_card_tipo { // 64 byte
+// dimensione tale che una task card occupi al più
+// 256 byte, di cui uno per '\0', in modo da poter
+// esprimere la dimensione dei messaggi con un singolo byte
+// TODO valuta se è il caso di rendere possibile avere desc | strlen(desc > 243)
+#define MAX_DIM_DESC 256
+
+struct task_card_tipo { 
     uint8_t id; 
     uint8_t colonna; 
-    char desc[MAX_DIM_DESC];
     uint16_t utente; 
     int64_t last_modified;
-};   
+    char *desc;
+};
 typedef struct task_card_tipo task_card_t;
 
 typedef struct lavagna_tipo lavagna_t;

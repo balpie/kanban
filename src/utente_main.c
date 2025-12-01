@@ -63,15 +63,19 @@ int main(int argc, char* argv[])
                     printf(">! Comando inesistente\n");
                     break;
                 case CMD_CREATE_CARD:
-                    task_card_t* cc = create_card();
-                    char buffer[sizeof(*cc)]; 
+                    // !! Create card la alloca nello heap
+                    task_card_t* cc = create_card(); 
+                    show_card(cc);
+                    size_t net_card = sizeof(*cc) - sizeof(cc->desc) + strlen(cc->desc);
+                    char buffer[net_card]; 
                     unsigned dim = prepare_card(cc, buffer);
                     char instr_to_server[2]; 
                     char instr_from_server[2];
                     get_msg(sd, instr_from_server, 2);
                     instr_to_server[1] = dim;
                     send_msg(sd, instr_to_server, 2);
-                    send_msg(sd, buffer, dim);
+                    send_msg(sd, buffer, dim + sizeof(*cc) - sizeof(cc->desc));
+                    free(cc);
                     break;
             }
         }while(c != CMD_QUIT);

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+  
 void clear_stdin_buffer()
 {
     char c;
@@ -47,7 +47,8 @@ task_card_t *create_card()
     
     new_card->colonna = strtoul(buf, NULL, 10);
     new_card->utente = 0; // ancora non è assegnata a nessun utente
-    printf(">> inserire la descrizione dell'attività, da terminare con a-capo. Massimo 51 caratteri:\n");
+    printf(">> inserire la descrizione dell'attività, da terminare con a-capo. Massimo %d caratteri:\n", 
+            MAX_DIM_DESC);
     if(!fgets(buf, MAX_DIM_DESC, stdin))
     {
         perror(">! errore fgets, la card non è stata creata");
@@ -64,6 +65,7 @@ task_card_t *create_card()
         *endlptr = '\0';
     }
     new_card->last_modified = time(NULL);
+    new_card->desc = (char*)malloc((strlen(buf) + 1)*sizeof(char));
     strcpy(new_card->desc, buf);
     return new_card;
 }

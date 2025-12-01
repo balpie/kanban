@@ -46,17 +46,14 @@ void copia_card(task_card_t *src, task_card_t *dest)
     dest->colonna = src->colonna;
     dest->utente = src->utente;
     dest->last_modified = src->last_modified;
-    for(int i = 0; i < MAX_DIM_DESC; i++) // TODO strcpy !?
-    {
-        dest->desc[i] = src->desc[i];
-    }
+    dest->desc = src->desc;
 }
 
 // Inserimento ordinato rispetto alla colonna all'interno della lavagna
 void insert_into_lavagna(lavagna_t **l, task_card_t *card)
 {
-    lavagna_t* new = (lavagna_t*)malloc(sizeof(lavagna_t));
-    copia_card(card, &(new->card));
+    lavagna_t* new = (lavagna_t*)malloc(sizeof(lavagna_t)); 
+    copia_card(card, &(new->card)); 
     if(!*l)
     {
         (*l) = new;
@@ -171,41 +168,46 @@ char prompt_line(char* content)
 // serializzazione e hton dei membri numerici con sizeof > 1
 size_t prepare_card(task_card_t *card, void* buf)
 {
-    // max 63 byte
-    size_t dim_str = strlen(card->desc);
-    size_t dim = sizeof(card->id) +
-        sizeof(card->colonna) +
-        sizeof(card->utente) +
-        sizeof(card->last_modified) +
-        dim_str; // mando senza '\0'
+    // max 255 byte (escludendo \0)
+    size_t dim_desc = strlen(card->desc);
     uint64_t timestamp = htonll(card->last_modified);
     uint16_t usr = htons(card->utente);
-    // copio colonna, id, e descrizione
-    memcpy(buf, (void*)card, dim_str + 2*sizeof(card->id)); 
-    buf = (char*)buf + dim_str + 2*sizeof(card->id);
-    memcpy(buf, (void*)&usr, sizeof(card->utente));
-    buf = (char*)buf + sizeof(card->utente);
-    memcpy(buf, (void*)&timestamp, sizeof(card->last_modified));
-    printf("\n[prepare_card]dbg> dim_str: %lu, dim: %lu\n", dim_str, dim);
-    return dim;
+    // copio colonna, id
+    memcpy(buf, (void*)card, sizeof(card->id)); 
+    buf = (char*)buf + sizeof(card->id); // 1
+    memcpy(buf, (void*)card, sizeof(card->colonna)); 
+    buf = (char*)buf + sizeof(card->colonna); // 1 
+    memcpy(buf, (void*)&usr, sizeof(card->utente)); 
+    buf = (char*)buf + sizeof(card->utente); // 2
+    memcpy(buf, (void*)&timestamp, sizeof(card->last_modified)); 
+    buf = (char*)buf + sizeof(card->last_modified); // 8
+    // copio descrizione
+    memcpy(buf, (void*)card->desc, dim_desc);
+    printf("\n[prepare_card]dbg> dim_desc: %lu\n", dim_desc);
+    printf("\n[prepare_card]dbg> desc: %s\n", (char*)buf);
+    return dim_desc;
 }
 
-void unprepare_card(task_card_t *card, void* buf, size_t dim)
+// dim è la dimensione della descrizione, escluso \0
+void unprepare_card(task_card_t *card, void* buf, size_t dim_desc)
 {
+    // id
     memcpy((void*)&card->id, buf, 1);
-    buf = (char*)buf + 1;
+    buf = (char*)buf + sizeof(card->id);
+    // colonna
     memcpy((void*)&card->colonna, buf, 1);
-    buf = (char*)buf + 1;
-    // la dimensione della descrizione della card che arriva è pari
-    // alla dimensione totale meno la dimensione massima della descrizione
-    size_t dim_desc = dim - (sizeof(*card) - sizeof(card->desc)/sizeof(card->desc[0]));
-    printf("\ndbg> Dimensione desc: %lu\n", dim_desc);
-    memcpy(card->desc, buf, dim_desc);
-    buf += dim_desc;
+    buf = (char*)buf + sizeof(card->colonna);
+    // utente
     memcpy((void*)&card->utente, buf, sizeof(card->utente));
-    card->desc[dim_desc] = '\0';
     card->utente = ntohs(card->utente);
-    buf += sizeof(card->utente);
+    buf = (char*)buf + sizeof(card->utente);
+    // timestamp
     memcpy((void*)&card->last_modified, buf, sizeof(card->last_modified));
     card->last_modified = ntohll(card->last_modified);
+    buf = (char*)buf + sizeof(card->last_modified);
+
+    card->desc = (char*)malloc((dim_desc + 1)*(sizeof(char)));
+    memcpy(card->desc, buf, dim_desc);
+    card->desc[dim_desc] = '\0';
+    printf("\n[unprepare_card]dbg> desc: %s\n", card->desc);
 }
