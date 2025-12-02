@@ -123,8 +123,8 @@ void to_upper_case(char* str)
         }
     }
 }
-  
-// valuta comandi non vuoti e ritorna carattere associato al comando
+
+// valuta comandi e ritorna carattere associato al comando
 char eval_cmdbuf(char* cmd) 
 {
     char* nl = strchr(cmd, '\n');
