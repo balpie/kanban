@@ -1,6 +1,7 @@
 #ifndef UTENTE_H
 #define UTENTE_H
 #include "../include/common.h"
+#include "../include/common_net.h"
   
 // CREATE_CARD:
 // Crea carta (con id, colonna, e descrizione prese da tastiera)

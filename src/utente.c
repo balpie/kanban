@@ -1,8 +1,9 @@
 #include "../include/common.h"
+#include "../include/common_net.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-  
+
 void clear_stdin_buffer()
 {
     char c;
@@ -69,3 +70,5 @@ task_card_t *create_card()
     strcpy(new_card->desc, buf);
     return new_card;
 }
+
+

@@ -195,11 +195,9 @@ void unprepare_card(task_card_t *card, void* buf, size_t dim_desc)
     // id
     memcpy((void*)&card->id, buf, 1);
     buf = (char*)buf + sizeof(card->id);
-    printf("\n[unprepare_card]dbg> id: %u\n", card->id);
     // colonna
     memcpy((void*)&card->colonna, buf, 1);
     buf = (char*)buf + sizeof(card->colonna);
-    printf("\n[unprepare_card]dbg> desc: %u\n", card->colonna);
     // utente
     memcpy((void*)&card->utente, buf, sizeof(card->utente));
     card->utente = ntohs(card->utente);
@@ -212,5 +210,4 @@ void unprepare_card(task_card_t *card, void* buf, size_t dim_desc)
     card->desc = (char*)malloc((dim_desc + 1)*(sizeof(char)));
     memcpy(card->desc, buf, dim_desc);
     card->desc[dim_desc] = '\0';
-    printf("\n[unprepare_card]dbg> desc: %s\n", card->desc);
 }

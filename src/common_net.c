@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "../include/common_net.h"
 
 // Usando il preprocessore funziona sia per macchine che
@@ -72,3 +73,32 @@ void* get_msg(int sock, void *buf, size_t size)
     }
     return buf;
 }
+
+int send_card(int socket, task_card_t *cc)
+{
+    size_t net_card = sizeof(*cc) - sizeof(cc->desc) + strlen(cc->desc);
+    char buffer[net_card]; 
+    unsigned dim = prepare_card(cc, buffer);
+    char instr_to_server[2]; 
+    char instr_from_server[2];
+    get_msg(socket, instr_from_server, 2);
+    instr_to_server[1] = dim;
+    send_msg(socket, instr_to_server, 2);
+    send_msg(socket, buffer, dim + sizeof(*cc) - sizeof(cc->desc));
+    return 1; // TODO error handling
+}
+
+task_card_t* recive_card(int socket, size_t dim_desc_card)
+{
+    printf("dbg> [recive_card] dim: %lu\n", dim_desc_card);
+    printf("dbg> [recive_card] malloc \n");
+    task_card_t* card = (task_card_t*)malloc(sizeof(task_card_t));
+    // preparo il buffer per la card in versione network
+    char net_card[dim_desc_card + sizeof(task_card_t) - sizeof(char*)]; 
+    printf("dbg> [recive_card] get_msg \n");
+    get_msg(socket, net_card, dim_desc_card + sizeof(task_card_t) - sizeof(char*));
+    printf("dbg> [recive_card] dim prima di unprepare: %lu\n", dim_desc_card);
+    unprepare_card(card, net_card, dim_desc_card); // alloca la descrizione
+    return card;
+}
+

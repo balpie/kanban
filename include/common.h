@@ -28,11 +28,10 @@
 // utente
 #define CMD_CREATE_CARD 'g'
 
+#define MAX_DIM_DESC 256
 // dimensione tale che una task card occupi al più
 // 256 byte, di cui uno per '\0', in modo da poter
 // esprimere la dimensione dei messaggi con un singolo byte
-// TODO valuta se è il caso di rendere possibile avere desc | strlen(desc > 243)
-#define MAX_DIM_DESC 256
 
 struct task_card_tipo { 
     uint8_t id; 

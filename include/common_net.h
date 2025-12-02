@@ -1,14 +1,13 @@
 #ifndef COMMON_NET_H
 #define COMMON_NET_H
 
-
-
 #define LAVAGNA_PORT 5678
 #define LAVAGNA_ADDR "127.0.0.1"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "common.h"
 
 // implementazione di htonll
 uint64_t htonll(uint64_t num);
@@ -24,5 +23,10 @@ int send_msg(int, void*, size_t);
 
 // riceve messaggio dal socket (argomento 1) un messaggio di dimensione (argomento 2)
 void* get_msg(int, void*, size_t);
+
+// send card al socket passato per indirizzo
+int send_card(int, task_card_t *);
+
+task_card_t* recive_card(int, size_t);
 
 #endif
