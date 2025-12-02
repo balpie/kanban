@@ -10,8 +10,8 @@
 #define DOING_COL 1
 #define DONE_COL 2
 
-// STATI
-#define STS_NOCARDS '0'
+// STATI SERVER
+#define STS_NOCARDS '0' // no card disponibili in todo
 
 // COMANDI
 #define CMD_STR_CREATE_CARD "CREATE_CARD"

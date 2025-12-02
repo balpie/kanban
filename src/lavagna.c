@@ -66,23 +66,26 @@ void* serv_client(void* cl_info)
     unsigned char instr_to_client[2]; 
     // come sopra ma per info su messaggi ricevuti dal client
     unsigned char instr_from_client[2];
-    instr_to_client[0] = STS_NOCARDS; // nulla da fare
+    for(;;)
+    { // TODO error handling
+        instr_to_client[0] = STS_NOCARDS; // nulla da fare
                                 // quindi non mi interessa cosa c'è in instr_to_client[2]
-    send_msg(socket, instr_to_client, 2);
-        // passo al client la possibilità di decidere che fare  
-    get_msg(socket, instr_from_client, 2); 
-        // ora sicuramente mi dirà che mi vuole mandare una bellissima card
-    size_t dim_desc_card = instr_from_client[1];
-    char net_card[dim_desc_card]; // preparo il buffer per la card in versione network
-    get_msg(socket, net_card, dim_desc_card + sizeof(task_card_t) - sizeof(char*));
-    task_card_t card;
-    unprepare_card(&card, net_card, dim_desc_card); // alloca la descrizione
-    printf("\ndbg[serv_thread] card.desc: \t%s\n", card.desc);
-    insert_into_lavagna(&lavagna, &card); // salva la descrizione nella lista
-    // stampo di nuovo il prompt 
-    show_lavagna(lavagna);
-    printf("\nlavagna> ");
-    fflush(stdout);
+        send_msg(socket, instr_to_client, 2);
+            // passo al client la possibilità di decidere che fare  
+        get_msg(socket, instr_from_client, 2); 
+            // ora sicuramente mi dirà che mi vuole mandare una bellissima card
+        size_t dim_desc_card = instr_from_client[1];
+        char net_card[dim_desc_card]; // preparo il buffer per la card in versione network
+        get_msg(socket, net_card, dim_desc_card + sizeof(task_card_t) - sizeof(char*));
+        task_card_t card;
+        unprepare_card(&card, net_card, dim_desc_card); // alloca la descrizione
+        printf("dbg[serv_client]> card arrivata con colonna: %u\n", card.colonna);
+        insert_into_lavagna(&lavagna, &card); // salva la descrizione nella lista
+        // stampo di nuovo il prompt 
+        show_lavagna(lavagna);
+        printf("\nlavagna> ");
+        fflush(stdout);
+    } 
     return NULL;
 }
 

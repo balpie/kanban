@@ -54,6 +54,8 @@ int main(int argc, char* argv[])
         char c;
         do
         {
+            // TODO Fai a meno della dichiarazione di variabili all'interno dello switch
+            //      in oltre se c è un comando per lavagna bisogna fare come per CMD_INVALID
             c = prompt_line("utente");
             switch(c)
             {
@@ -75,6 +77,7 @@ int main(int argc, char* argv[])
                     instr_to_server[1] = dim;
                     send_msg(sd, instr_to_server, 2);
                     send_msg(sd, buffer, dim + sizeof(*cc) - sizeof(cc->desc));
+                    free(cc->desc); // libero la descrizione, anc'essa allocata nello heap
                     free(cc);
                     break;
             }

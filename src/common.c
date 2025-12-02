@@ -172,19 +172,20 @@ size_t prepare_card(task_card_t *card, void* buf)
     size_t dim_desc = strlen(card->desc);
     uint64_t timestamp = htonll(card->last_modified);
     uint16_t usr = htons(card->utente);
-    // copio colonna, id
-    memcpy(buf, (void*)card, sizeof(card->id)); 
+    // id
+    memcpy(buf, (void*)&card->id, sizeof(card->id)); 
     buf = (char*)buf + sizeof(card->id); // 1
-    memcpy(buf, (void*)card, sizeof(card->colonna)); 
+    // colonna
+    memcpy(buf, (void*)&card->colonna, sizeof(card->colonna)); 
     buf = (char*)buf + sizeof(card->colonna); // 1 
+    // utente
     memcpy(buf, (void*)&usr, sizeof(card->utente)); 
     buf = (char*)buf + sizeof(card->utente); // 2
+    // timestamp
     memcpy(buf, (void*)&timestamp, sizeof(card->last_modified)); 
     buf = (char*)buf + sizeof(card->last_modified); // 8
-    // copio descrizione
+    // descrizione
     memcpy(buf, (void*)card->desc, dim_desc);
-    printf("\n[prepare_card]dbg> dim_desc: %lu\n", dim_desc);
-    printf("\n[prepare_card]dbg> desc: %s\n", (char*)buf);
     return dim_desc;
 }
 
@@ -194,9 +195,11 @@ void unprepare_card(task_card_t *card, void* buf, size_t dim_desc)
     // id
     memcpy((void*)&card->id, buf, 1);
     buf = (char*)buf + sizeof(card->id);
+    printf("\n[unprepare_card]dbg> id: %u\n", card->id);
     // colonna
     memcpy((void*)&card->colonna, buf, 1);
     buf = (char*)buf + sizeof(card->colonna);
+    printf("\n[unprepare_card]dbg> desc: %u\n", card->colonna);
     // utente
     memcpy((void*)&card->utente, buf, sizeof(card->utente));
     card->utente = ntohs(card->utente);
