@@ -10,6 +10,39 @@ void clear_stdin_buffer()
     while((c = getchar()) != '\n'); 
 }
 
+// FIXME Quando fai ctrl-d in mezzo a una stringa 
+// da sigsev porcodio
+char* get_desc(char* buf)
+{
+    int count = 0;
+    do{
+        if(count > 0)
+        {
+            printf(">! la descrizone non può essere vuota\n");
+        }
+        printf(">> inserire la descrizione dell'attività, da terminare con a-capo. Massimo %d caratteri:\n", 
+                MAX_DIM_DESC);
+        if(!fgets(buf, MAX_DIM_DESC, stdin))
+        {
+            perror(">! errore fgets, la card non è stata creata");
+            return NULL;
+        }
+        char* endlptr = strchr(buf, '\n');
+        if(!endlptr)
+        { 
+            clear_stdin_buffer();
+        }
+        else
+        {
+            *endlptr = '\0';
+        }
+        count++;
+    }
+    while(strlen(buf) == 0);
+    buf = (char*)malloc((strlen(buf) + 1)*sizeof(char));
+    return buf;
+}
+
 // Ritorna 1 in caso di successo, 0 altrimenti
 task_card_t *create_card()
 {
@@ -45,28 +78,15 @@ task_card_t *create_card()
     }
     buf[1] = '\0'; // Sicuramente ho un a-capo nel buffer
     clear_stdin_buffer();
-    
-    new_card->colonna = strtoul(buf, NULL, 10);
-    new_card->utente = 0; // ancora non è assegnata a nessun utente
-    printf(">> inserire la descrizione dell'attività, da terminare con a-capo. Massimo %d caratteri:\n", 
-            MAX_DIM_DESC);
-    if(!fgets(buf, MAX_DIM_DESC, stdin))
+    new_card->last_modified = time(NULL);
+    new_card->desc = get_desc(buf);
+    if(!new_card->desc)
     {
-        perror(">! errore fgets, la card non è stata creata");
         free(new_card);
         return NULL;
     }
-    endlptr = strchr(buf, '\n');
-    if(!endlptr)
-    { 
-        clear_stdin_buffer();
-    }
-    else
-    {
-        *endlptr = '\0';
-    }
-    new_card->last_modified = time(NULL);
-    new_card->desc = (char*)malloc((strlen(buf) + 1)*sizeof(char));
+    new_card->colonna = strtoul(buf, NULL, 10);
+    new_card->utente = 0; // ancora non è assegnata a nessun utente
     strcpy(new_card->desc, buf);
     return new_card;
 }

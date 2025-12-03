@@ -41,37 +41,58 @@ uint64_t ntohll(uint64_t num)
 
 // manda size byte di msg via sock
 // ritorna 1 se eseguita con successo
+// TODO loop per caso sent < size
 int send_msg(int sock, void* msg, size_t size)
 {
-    ssize_t sent = send(sock, msg, size, 0);
-    if(sent < 0)
+    ssize_t sent = 0;
+    do
     {
-        perror("\n>! Errore send");
-        return 0;
-    }
-    if(sent < size)
-    {
-        printf("\n>! Errore send interlocutore:\n\tInviato %lu invece di %lu", sent, size);
-        return 0;
-    }
+        ssize_t offs = send(sock, (char*)msg + sent, size - sent, 0);
+        sent += offs;
+        if(sent < 0)
+        {
+            perror("\n>! Errore send");
+            return 0;
+        }
+    } while(sent < size);
     return 1;
 }
 
 // riceve messaggio dal socket (argomento 1) un messaggio di dimensione (argomento 2)
-void* get_msg(int sock, void *buf, size_t size)
+// TODO loop per caso recived < size
+int get_msg(int sock, void *buf, size_t size)
 {
-    ssize_t recived = recv(sock, buf, size, 0);
-    if(recived < 0)
+    ssize_t recived = 0;
+    do
     {
-        perror("\n>! Errore recv");
-        return NULL;
-    }
-    if(recived < size)
-    {
-        printf("\n>! Errore recv interlocutore:\n\tRicevuto %lu invece di %lu", recived, size);
-        return NULL;
-    }
-    return buf;
+        ssize_t offs = recv(sock,(char*) buf, size - recived, 0);
+        recived+=offs;
+        if(recived == 0)
+        {
+            return RTR_CONN_CLOSE;
+        }
+        if(recived < 0)
+        {
+            perror("\n>! Errore recv");
+            return 0;
+        }
+        // gestisci caso ping/pong, da valutare sia se ne arrivano
+        // meno di quanto mi aspettassi, che se ne mancavano esattamente 2
+        if(recived < size)  // gestisci caso recived == 2 == size ma è ping-pong
+        {
+#ifdef IS_LAVAGNA
+            printf("dbg> Sono la lavagna!\n");
+            // aggiorna info ping-pong
+#else 
+            printf("dbg> Sono utente!\n");
+            // manda pong
+            // ricevi nuovo messaggio, che dovrebbe essere quello expected
+#endif
+            printf("\n>! Errore recv interlocutore:\n\tRicevuto %lu invece di %lu", recived, size);
+            return 0;
+        }
+    }while (recived < size);
+    return 1;
 }
 
 int send_card(int socket, task_card_t *cc)

@@ -29,14 +29,16 @@ int init_listener(struct sockaddr_in* server_addr)
 }
 
 // inserimento in testa
-void insert_connection(connection_l_e **headptr, int socket, uint16_t port_id, uint32_t addr)
+connection_l_e* insert_connection(connection_l_e **headptr, int socket, uint16_t port_id, uint32_t addr)
 {
     connection_l_e *nuovo = (connection_l_e*)malloc(sizeof(connection_l_e));
     nuovo->socket = socket;
     nuovo->port_id = port_id;
     nuovo->addr = addr;
     nuovo->next = *headptr;
+    nuovo->to_send = NULL;
     *headptr = nuovo;
+    return nuovo;
 }
 
 // ritorna 0 se rimozione fallita, 1 altrimenti

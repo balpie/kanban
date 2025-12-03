@@ -49,37 +49,44 @@ void* prompt_cycle(void *)
     // non è significativo nel caso in cui non sia implicita un'altra trasmissione
     // nello stato indicato dal primo byte
 // argomento passato: connection_l relativo al client da servire
-int registra_client(int socket, uint32_t addr) // TODO error checking
+connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checking
 {
     uint16_t port; // port_id
     // il primo messaggio che ogni client deve mandare è la propria porta
     // identificativa, che gli permette di parlare con gli altri
     get_msg(socket, (void*)&port, 2); 
     pthread_mutex_lock(&lista_connessioni.m);
-    insert_connection(&(lista_connessioni.head), socket, ntohs(port), addr); 
+    connection_l_e* conn = insert_connection(&(lista_connessioni.head), socket, ntohs(port), addr); 
     pthread_mutex_unlock(&lista_connessioni.m);
-    n_connessioni++;
-    return 1; // assumo successo
+    status.n_connessioni++;
+    return conn; // assumo successo
 }
 
 void* serv_client(void* cl_info) 
 {
+  // socket   
     struct client_info *cl_in = (struct client_info*)cl_info;
-    int socket = cl_in->socket;
-    registra_client(socket, cl_in->addr); // TODO error checking
+    // Sotto variabile che punta alla connessione servita da questo thread
+    connection_l_e* connessione = registra_client(cl_in->socket, cl_in->addr); 
     free(cl_in);
-    unsigned char instr_to_client[2]; 
-    unsigned char instr_from_client[2];
+    unsigned char instr_to_client[2]; // messaggio di istruzioni da mandare al client
+    unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
     for(;;)
-    { 
+    {
         instr_to_client[0] = STS_NOCARDS; // nulla da fare
                                 // quindi non mi interessa cosa c'è in instr_to_client[2]
-        send_msg(socket, instr_to_client, 2);
+        send_msg(connessione->socket, instr_to_client, 2);
             // passo al client la possibilità di decidere che fare  
-        get_msg(socket, instr_from_client, 2); 
+        if(!get_msg(connessione->socket, instr_from_client, 2)) 
+        { // caso connessione chiusa
+            pthread_mutex_lock(&lista_connessioni.m);
+            remove_connection(&(lista_connessioni.head), connessione->socket);
+            pthread_mutex_unlock(&lista_connessioni.m);
+            break;
+        }
         // RECIVE_CARD
         printf("dbg> recive_card, dim_desc_card: %lu\n", (size_t)instr_from_client[1]);
-        task_card_t *card = recive_card(socket, (size_t)instr_from_client[1]);
+        task_card_t *card = recive_card(connessione->socket, (size_t)instr_from_client[1]);
         printf("dbg> insert_into_lavagna\n");
         insert_into_lavagna(&lavagna, card); // salva la descrizione nella lista
         free(card); 

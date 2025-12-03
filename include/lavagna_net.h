@@ -1,6 +1,7 @@
 #ifndef LAVAGNA_NET_H
 #define LAVAGNA_NET_H
 #include "common_net.h"
+#include "common.h"
 
 #define MAX_QUEUE 10
 
@@ -11,6 +12,7 @@ struct connection_list_element
     uint16_t port_id; // porta id client network order
     uint32_t addr; // indirizzo client network order
     connection_l_e *next;
+    task_card_t *to_send;
 };
 
 struct connection_list
@@ -22,7 +24,7 @@ typedef struct connection_list connection_l;
 
 // inserisce connessione in testa
 // funzione da chiamare solo dopo la registrazione
-void insert_connection(connection_l_e**, int, uint16_t, uint32_t);
+connection_l_e* insert_connection(connection_l_e**, int, uint16_t, uint32_t);
 // rimuove connessione
 // il socket della connessione 
 int remove_connection(connection_l_e **, int);

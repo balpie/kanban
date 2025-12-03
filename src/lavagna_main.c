@@ -7,13 +7,16 @@
 #include <unistd.h>
 
 connection_l lista_connessioni;
-int n_connessioni = 0;
+
 int sock_listener; // in modo da poter terminare dai thread
+struct server_status status;
 
 lavagna_t *lavagna = NULL; 
 
 int main() // main thread: listener
 {
+    pthread_rwlock_init(&status.rwlock, NULL);
+    status.n_connessioni = 0;
     struct sockaddr_in listener_addr;
     struct sockaddr_in new_connection;
     sock_listener = init_listener(&listener_addr);
@@ -27,7 +30,7 @@ int main() // main thread: listener
     while(1)
     {
         unsigned int len_new = sizeof(new_connection);
-        if(n_connessioni < MAX_SERVER_PROCS)
+        if(status.n_connessioni < MAX_SERVER_PROCS)
         {
             new_sock = accept(sock_listener, (struct sockaddr*)&new_connection, &len_new);
             // alloco nello heap altrimenti in caso di connessioni molto vicine tra loro
@@ -36,7 +39,7 @@ int main() // main thread: listener
             struct client_info *ci = (struct client_info*)malloc(sizeof(struct client_info));
             ci->addr = new_connection.sin_addr.s_addr;
             ci->socket = new_sock;
-            pthread_create(&server_processes[n_connessioni++], NULL, serv_client, ci);
+            pthread_create(&server_processes[status.n_connessioni++], NULL, serv_client, ci);
         }
         else 
         {// se ho tutti i thread occupati aspetto che uno si liberi.
