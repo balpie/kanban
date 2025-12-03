@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 void clear_stdin_buffer()
 {
@@ -10,8 +11,35 @@ void clear_stdin_buffer()
     while((c = getchar()) != '\n'); 
 }
 
+int registra_utente(int port)
+{
+    int sd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in indirizzo_server;
+    memset(&indirizzo_server, 0, sizeof(indirizzo_server));
+    inet_pton(AF_INET, LAVAGNA_ADDR, &indirizzo_server.sin_addr.s_addr);
+    indirizzo_server.sin_port = htons(LAVAGNA_PORT);
+    indirizzo_server.sin_family = AF_INET;
+    if(connect(sd, (struct sockaddr*)&indirizzo_server, sizeof(indirizzo_server)))
+    {
+        perror(">! errore connect");
+        exit(-1);
+    }
+    int nport = htons(port);
+    if(send_msg(sd, &nport, 2)) // mando al server la mia porta per registrarmi
+    {
+        printf(">> Registrazione effettuata con successo \n");
+    }
+    else
+    {
+        printf(">> quitting\n");
+        close(sd);
+        exit(-1);
+    }
+    return sd;
+}
+
 // FIXME Quando fai ctrl-d in mezzo a una stringa 
-// da sigsev porcodio
+// da sigsev 
 char* get_desc(char* buf)
 {
     int count = 0;

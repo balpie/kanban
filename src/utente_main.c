@@ -27,52 +27,29 @@ int main(int argc, char* argv[])
     {
         err_args(argv[0]);
     }    
-    int sd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in indirizzo_server;
-    memset(&indirizzo_server, 0, sizeof(indirizzo_server));
-    inet_pton(AF_INET, LAVAGNA_ADDR, &indirizzo_server.sin_addr.s_addr);
-    indirizzo_server.sin_port = htons(LAVAGNA_PORT);
-    indirizzo_server.sin_family = AF_INET;
-    if(connect(sd, (struct sockaddr*)&indirizzo_server, sizeof(indirizzo_server)))
+    int server_sock = registra_utente(user_port);
+    printf(">> Registrazione al server con porta %u...\n", user_port);
+    char c;
+    do
     {
-        perror("errore connect");
-    }
-    else
-    {
-        printf(">> Registrazione al server con porta %u...\n", user_port);
-        int nport = htons(user_port);
-        if(send_msg(sd, &nport, 2)) // mando al server la mia porta per registrarmi
+        // TODO Fai a meno della dichiarazione di variabili all'interno dello switch
+        //      in oltre se c è un comando per lavagna bisogna fare come per CMD_INVALID
+        c = prompt_line("utente");
+        switch(c)
         {
-            printf(">> Registrazione effettuata con successo \n");
+            case CMD_NOP:
+                break;
+            case CMD_INVALID:
+                printf(">! Comando inesistente\n");
+                break;
+            case CMD_CREATE_CARD:
+                task_card_t* cc = create_card();  // crea card
+                send_card(server_sock, cc); // manda card al server
+                free(cc->desc); // libero la descrizione, anc'essa allocata nello heap
+                free(cc); // libero la card
+                break;
         }
-        else
-        {
-            printf(">> quitting\n");
-            close(sd);
-            exit(-1);
-        }
-        char c;
-        do
-        {
-            // TODO Fai a meno della dichiarazione di variabili all'interno dello switch
-            //      in oltre se c è un comando per lavagna bisogna fare come per CMD_INVALID
-            c = prompt_line("utente");
-            switch(c)
-            {
-                case CMD_NOP:
-                    break;
-                case CMD_INVALID:
-                    printf(">! Comando inesistente\n");
-                    break;
-                case CMD_CREATE_CARD:
-                    task_card_t* cc = create_card();  // crea card
-                    send_card(sd, cc); // manda card al server
-                    free(cc->desc); // libero la descrizione, anc'essa allocata nello heap
-                    free(cc); // libero la card
-                    break;
-            }
-        }while(c != CMD_QUIT);
-    }
-    close(sd);
+    }while(c != CMD_QUIT);
+    close(server_sock);
     return 0;
 }

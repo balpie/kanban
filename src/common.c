@@ -132,6 +132,10 @@ char eval_cmdbuf(char* cmd)
     {
         *nl = '\0';
     }
+    if(!strlen(cmd))
+    {
+        return CMD_NOP;
+    }
     to_upper_case(cmd);
     int count_matches = 0;
     int match = -1;

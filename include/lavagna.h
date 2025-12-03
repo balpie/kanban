@@ -11,15 +11,9 @@ struct client_info{
     uint32_t addr; // network order
 };
 
-// TODO
-// Devo associare un puntatore a card, tipo "da mandare", ad ogni thread di ogni connessione attiva
-// Quando c'è da associare una card a un utente, il thread che "se ne accorge"
-// toglie NULL da questa struttura per tutti i thread delle connessioni attualmente attive, 
-// e quando un thread trova nel proprio puntatore un valore non null, manda la card
-// al suo utente, e tutto il resto che deve mandare.
 struct server_status{
     int n_connessioni;
-    int status; // indica se c
+    int status; 
     pthread_rwlock_t rwlock;
 };
 

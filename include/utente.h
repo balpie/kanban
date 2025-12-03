@@ -2,11 +2,14 @@
 #define UTENTE_H
 #include "../include/common.h"
 #include "../include/common_net.h"
+
   
 // CREATE_CARD:
 // Crea carta (con id, colonna, e descrizione prese da tastiera)
 task_card_t* create_card(); 
   
+// connettiti ed effettua la registrazione al server
+int registra_utente(int);
 // SHOW_LAVAGNA:
 // Viene mostrata la lavagna, con le card assegnate ognuna alla giusta colonna
 
