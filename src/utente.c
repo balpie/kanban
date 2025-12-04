@@ -96,7 +96,6 @@ int get_col()
         count++;
     }
     while(buf[0] < '0' || buf[0] > '2');
-    printf("dbg[get_col] colonna: %d\n", buf[0] - '0');
     return buf[0] - '0';
 }
 
@@ -124,7 +123,6 @@ task_card_t *create_card()
     }
     new_card->id = strtoul(buf, NULL, 10);
     new_card->colonna = get_col();
-    printf("[dbg]create_card dopo get_col, col: %d\n", new_card->colonna);
     if(new_card->colonna < 0)
     {
         free(new_card);
@@ -165,7 +163,7 @@ void *prompt_cycle_function(void* self_info)
                 // terminazione programma
                 exit(0);
             case CMD_INVALID:
-                printf(">! Comando inesistente\n");
+                printf(">! comando inesistente, o prefisso comune a più comandi\n");
                 break;
             case CMD_CREATE_CARD:
                 if(!pthread_mutex_trylock(&created_m))
@@ -178,6 +176,7 @@ void *prompt_cycle_function(void* self_info)
                     printf(">! Impossibile creare la carta adesso\n");
                     continue;
                 }
+                break;
         }   
         cmd_queue[cmd_head] = c;
         cmd_head = (cmd_head + 1) % MAX_QUEUE_CMD;

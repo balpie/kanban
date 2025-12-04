@@ -43,14 +43,20 @@ int main(int argc, char* argv[])
 
     pthread_create(&prompt_cycle, NULL, prompt_cycle_function, self_info);
         
-    for(;;)
+    for(;;) // Ciclo di comunicazione con server
     {
+        char instr_to_server[2];
+        char instr_from_server[2];
+        get_msg(server_sock, instr_from_server, 2);
+        // IF instr_from_server[0] == INSTR_NOP
+        // ovvero, il client decide cosa fare solo nel caso in cui il server
+        // non ha nulla da fare
         char c;
-        if(cmd_tail == cmd_head)
+        if(cmd_tail == cmd_head) // caso in cui non ho comandi da eseguire
         {
-            //printf(">! stato della coda: \t\ntail: %d\t\nhead: %d\n", cmd_tail, cmd_head);
-            //printf(">! nulla da fare per il client thread, aspetto npo\n");
-            //fflush(stdout);
+            instr_to_server[0] = INSTR_NOP;
+            send_msg(server_sock, instr_to_server, 2); // comunico al server che anche il client
+                                                       // non ha nulla da fare
             sleep(1);
             continue;
         }
@@ -61,10 +67,6 @@ int main(int argc, char* argv[])
             case CMD_CREATE_CARD:
                 pthread_mutex_lock(&created_m);
                 printf("\n>> mandando card appena creata...\n");
-
-                // se il server non mi da indicazioni su cosa fare...
-                char instr_from_server[2];
-                get_msg(server_sock, instr_from_server, 2);
 
                 // posso mandare la card
                 send_card(server_sock, created); // manda card al server

@@ -21,6 +21,13 @@ const char CMD_ARR[] = {
 
 void show_lavagna(lavagna_t *l)
 {
+    printf("\n-----------------------\n");
+    if(!l)
+    {
+        printf("\n-----LAVAGNA VUOTA-----\n");
+        printf("\n-----------------------\n");
+        return;
+    }
     printf("\n-----TO DO-----\n");
     while(l && l->card.colonna == TODO_COL)
     {
@@ -39,6 +46,8 @@ void show_lavagna(lavagna_t *l)
         show_card(&(l->card));
         l = l->next;
     }
+    printf("\n-----------------------\n");
+    if(!l)
     return;
 }
 

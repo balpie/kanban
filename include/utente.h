@@ -41,7 +41,7 @@ int registra_utente(int);
 
 // ACK_CARD
 // L'utente a cui viene assegnata la card lo comunica alla lavagna
-  
+
 // CARD_DONE
 // L'utente comunica alla lavagna la terminazione dell'attività
 #endif

@@ -20,9 +20,12 @@ void* prompt_cycle(void *)
                 stampa_utenti_connessi(lista_connessioni.head);
                 pthread_mutex_unlock(&lista_connessioni.m);
                 break;
+            case CMD_SHOW_LAVAGNA:
+                show_lavagna(lavagna);
+                break;
             case CMD_INVALID:
             default:
-                printf(">! comando inesistente\n");
+                printf(">! comando inesistente, o prefisso comune a più comandi\n");
                 break;
         }
     }while(cmd != CMD_QUIT);
@@ -84,17 +87,29 @@ void* serv_client(void* cl_info)
             pthread_mutex_unlock(&lista_connessioni.m);
             break;
         }
+        switch(instr_from_client[0]) // in base a cosa vuole fare il client lo servo...
+        {
+                                     
         // RECIVE_CARD
-        printf("dbg> recive_card, dim_desc_card: %lu\n", (size_t)instr_from_client[1]);
-        task_card_t *card = recive_card(connessione->socket, (size_t)instr_from_client[1]);
-        printf("dbg> insert_into_lavagna\n");
-        insert_into_lavagna(&lavagna, card); // salva la descrizione nella lista
-        free(card); 
-                    
-        printf("dbg> show_lavagna\n");
-        show_lavagna(lavagna);
-        printf("\nlavagna> ");
-        fflush(stdout);
+        case INSTR_NEW_CARD:
+            printf("dbg> recive_card, dim_desc_card: %lu\n", (size_t)instr_from_client[1]);
+            task_card_t *card = recive_card(connessione->socket, (size_t)instr_from_client[1]);
+            printf("dbg> insert_into_lavagna\n");
+            insert_into_lavagna(&lavagna, card); // salva la descrizione nella lista
+            free(card); 
+                        
+            printf("dbg> show_lavagna\n");
+            show_lavagna(lavagna);
+            printf("\nlavagna> ");
+            fflush(stdout);
+            break;
+        case INSTR_SHOW_LAVAGNA:
+            printf(">> Invia tutte le card della lavagna all'utente\n");
+            break;
+        case INSTR_NOP:
+            sleep(1); 
+            break;
+        }
     } 
     return NULL;
 }
