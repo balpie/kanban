@@ -1,3 +1,4 @@
+#include "../include/utente.h"
 #include "../include/common.h"
 #include "../include/common_net.h"
 #include <stdio.h>
@@ -67,8 +68,36 @@ char* get_desc(char* buf)
         count++;
     }
     while(strlen(buf) == 0);
-    buf = (char*)malloc((strlen(buf) + 1)*sizeof(char));
-    return buf;
+    char* desc = (char*)malloc((strlen(buf) + 1)*sizeof(char));
+    strcpy(desc, buf);
+    return desc;
+}
+
+int get_col()
+{
+    char buf[2];
+    int count = 0;
+    do{
+        if(count > 0)
+        {
+            printf(">! la colonna DEVE essere 0, 1 o 2\n");
+        }
+        printf("\t0: To Do\n");
+        printf("\t1: Doing\n");
+        printf("\t2: Done\n");
+        printf(">> inserire colonna: ");
+        if(!fgets(buf, 2, stdin)) // 1 cifra + \n
+        {
+            perror(">! errore fgets, la card non è stata creata");
+            return -1;
+        }
+        buf[1] = '\0'; // Sicuramente ho un a-capo nel buffer
+        clear_stdin_buffer();
+        count++;
+    }
+    while(buf[0] < '0' || buf[0] > '2');
+    printf("dbg[get_col] colonna: %d\n", buf[0] - '0');
+    return buf[0] - '0';
 }
 
 // Ritorna 1 in caso di successo, 0 altrimenti
@@ -94,18 +123,13 @@ task_card_t *create_card()
         *endlptr = '\0';
     }
     new_card->id = strtoul(buf, NULL, 10);
-    printf("\t0: To Do\n");
-    printf("\t1: Doing\n");
-    printf("\t2: Done\n");
-    printf(">> inserire colonna: ");
-    if(!fgets(buf, 2, stdin)) // 1 cifra + \n
+    new_card->colonna = get_col();
+    printf("[dbg]create_card dopo get_col, col: %d\n", new_card->colonna);
+    if(new_card->colonna < 0)
     {
-        perror(">! errore fgets, la card non è stata creata");
         free(new_card);
         return NULL;
     }
-    buf[1] = '\0'; // Sicuramente ho un a-capo nel buffer
-    clear_stdin_buffer();
     new_card->last_modified = time(NULL);
     new_card->desc = get_desc(buf);
     if(!new_card->desc)
@@ -113,10 +137,53 @@ task_card_t *create_card()
         free(new_card);
         return NULL;
     }
-    new_card->colonna = strtoul(buf, NULL, 10);
     new_card->utente = 0; // ancora non è assegnata a nessun utente
-    strcpy(new_card->desc, buf);
     return new_card;
 }
 
+void *prompt_cycle_function(void* self_info)
+{
+    int* port_sock = (int*)self_info;
+    //int user_port = port_sock[0];
+    int server_sock = port_sock[1];
+    char c;
+    for(;;)
+    {
+        c = prompt_line("utente");
+        if((cmd_head + 1) % MAX_QUEUE_CMD == cmd_tail)
+        {
+            // caso coda piena
+            printf(">! coda comandi piena, i prossimi comandi verranno ignorati\n");
+            continue;
+        }
+        switch(c)
+        {
+            case CMD_NOP:
+                // no comando
+                continue;
+            case CMD_QUIT:
+                // terminazione programma
+                exit(0);
+            case CMD_INVALID:
+                printf(">! Comando inesistente\n");
+                break;
+            case CMD_CREATE_CARD:
+                if(!pthread_mutex_trylock(&created_m))
+                {
+                    created = create_card();  // crea card
+                    pthread_mutex_unlock(&created_m);
+                }
+                else
+                {
+                    printf(">! Impossibile creare la carta adesso\n");
+                    continue;
+                }
+        }   
+        cmd_queue[cmd_head] = c;
+        cmd_head = (cmd_head + 1) % MAX_QUEUE_CMD;
+    }
+    // l'utente ha fatto quit
+    close(server_sock);
+    exit(0);
+}
 

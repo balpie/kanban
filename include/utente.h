@@ -2,8 +2,27 @@
 #define UTENTE_H
 #include "../include/common.h"
 #include "../include/common_net.h"
+#include <pthread.h>
+
+#define MAX_QUEUE_CMD 10
+
 
   
+// Coda circolare dei comandi da eseguire
+extern char cmd_queue[MAX_QUEUE_CMD];
+// quando coincidono testa e coda, la lista è vuota
+// quando la testa è subito dietro la coda, la lista è piena
+extern int cmd_head;
+extern int cmd_tail;
+
+// Carta creata dal prompt thread
+extern task_card_t *created;
+extern pthread_mutex_t created_m;
+
+// Funzione del thread che gestisce il prompt. 
+// Inserisce comandi nella cmd_queue, in modo che 
+// il main thread li possa eseguire, se hanno bisogno di comunicare con la lavagna
+void* prompt_cycle_function(void*);
 // CREATE_CARD:
 // Crea carta (con id, colonna, e descrizione prese da tastiera)
 task_card_t* create_card(); 

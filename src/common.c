@@ -103,6 +103,7 @@ lavagna_t* remove_from_lavagna(lavagna_t **l, uint8_t id)
 
 void show_card(task_card_t *cc)
 {
+    printf("dbg[common]> show card, col: %d\n", cc->colonna);
     char buf[21];
     struct tm *lastmod = localtime(&cc->last_modified);
     strftime(buf, 21, "%D %H:%m:%S", lastmod);
