@@ -73,7 +73,7 @@ void* serv_client(void* cl_info)
     unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
     for(;;)
     {
-        instr_to_client[0] = STS_NOCARDS; // nulla da fare
+        instr_to_client[0] = INSTR_NOP; // nulla da fare
                                 // quindi non mi interessa cosa c'è in instr_to_client[2]
         send_msg(connessione->socket, instr_to_client, 2);
             // passo al client la possibilità di decidere che fare  

@@ -61,6 +61,12 @@ int main(int argc, char* argv[])
             case CMD_CREATE_CARD:
                 pthread_mutex_lock(&created_m);
                 printf("\n>> mandando card appena creata...\n");
+
+                // se il server non mi da indicazioni su cosa fare...
+                char instr_from_server[2];
+                get_msg(server_sock, instr_from_server, 2);
+
+                // posso mandare la card
                 send_card(server_sock, created); // manda card al server
                 free(created->desc); // libero la descrizione, anc'essa allocata nello heap
                 free(created); // libero la card

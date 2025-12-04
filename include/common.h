@@ -11,18 +11,25 @@
 #define DONE_COL 2
 
 // STATI SERVER
-#define STS_NOCARDS '0' // no card disponibili in todo
+#define INSTR_NOP '0' // no card disponibili in todo, quindi l'utente non ha nulla da fa
+
+
+// ISTRUZIONI DAL CLIENT
+#define INSTR_NEW_CARD '1' // il successivo byte ricevuto è la dimensione della card che verrà 
+                           // inviata successivamente dall'utente
 
 // COMANDI
 #define CMD_STR_CREATE_CARD "CREATE_CARD"
 #define CMD_STR_QUIT "QUIT"
 #define CMD_STR_STAMPA_UTENTI_CONNESSI "SEE_CONNECTED"
+#define CMD_STR_SHOW_LAVAGNA "SHOW_LAVAGNA"
 // Lettere maiuscole: comandi validi per lavagna
 // Lettere minuscole: comandi validi per utente 
 // altri caratteri: comandi validi per entrambi
 #define CMD_NOP '\0'
 #define CMD_QUIT '.'
 #define CMD_INVALID '-'
+#define CMD_SHOW_LAVAGNA '#'
 // lavagna
 #define CMD_STAMPA_UTENTI_CONNESSI 'S'
 // utente
