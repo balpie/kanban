@@ -12,6 +12,7 @@
 
 // STATI SERVER
 #define INSTR_NOP '0' // no card disponibili in todo, quindi l'utente non ha nulla da fa
+#define INSTR_EMPTY '1' // Lista da mandare vuota
 
 
 // ISTRUZIONI DAL CLIENT
@@ -77,5 +78,10 @@ size_t prepare_card(task_card_t *card, void* buf);
 
 // fa l'opposto di prepare_card
 void unprepare_card(task_card_t *card, void* buf, size_t dim);
+
+// libera la memoria allocata dinamicamente della lavagna.
+// se la lavagna va utilizzata ancora bisogna assegnarvi NULL per
+// mantenerla consistente
+void libera_lavagna(lavagna_t*);
 
 #endif

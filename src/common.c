@@ -65,6 +65,7 @@ void insert_into_lavagna(lavagna_t **l, task_card_t *card)
 {
     lavagna_t* new = (lavagna_t*)malloc(sizeof(lavagna_t)); 
     copia_card(card, &(new->card)); 
+    // TODO free(card)??????????????
     if(!*l)
     {
         (*l) = new;
@@ -88,6 +89,7 @@ void insert_into_lavagna(lavagna_t **l, task_card_t *card)
     new->next = iter;
 }
 
+// non è una rimozione, è più un'estrazione
 lavagna_t* remove_from_lavagna(lavagna_t **l, uint8_t id)
 {
     lavagna_t* iter = *l;
@@ -111,10 +113,19 @@ lavagna_t* remove_from_lavagna(lavagna_t **l, uint8_t id)
     return iter;
 }
 
+// TODO fix memory leak
+void libera_lavagna(lavagna_t* ll)
+{
+    if(!ll)
+        return;
+    lavagna_t* tmp = ll->next;
+    free(ll->card.desc);
+    free(ll);
+    libera_lavagna(tmp);
+}
 
 void show_card(task_card_t *cc)
 {
-    printf("dbg[common]> show card, col: %d\n", cc->colonna);
     char buf[21];
     struct tm *lastmod = localtime(&cc->last_modified);
     strftime(buf, 21, "%D %H:%m:%S", lastmod);
@@ -167,6 +178,7 @@ char eval_cmdbuf(char* cmd)
         return CMD_ARR[match]; // ritorno il comando
     else
         return CMD_INVALID; // altrimenti c'è un errore di sintassi
+                            // oppure il prefisso è comune a più di un comando
 }
 
 char prompt_line(char* content)

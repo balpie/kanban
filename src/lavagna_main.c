@@ -11,6 +11,7 @@ connection_l lista_connessioni;
 int sock_listener; // in modo da poter terminare dai thread
 struct server_status status;
 
+// TODO rwlock o mutex
 lavagna_t *lavagna = NULL; 
 
 int main() // main thread: listener
@@ -26,7 +27,9 @@ int main() // main thread: listener
     pthread_t server_processes[MAX_SERVER_PROCS];
     pthread_mutex_init(&lista_connessioni.m, 0);
     // creo il thread per interazione via terminale
-    pthread_create(&prompt_thread, NULL, prompt_cycle, NULL);
+    // Non importa fare detach perchè se si finisce vuol dire che il programma 
+    // è finito
+    pthread_create(&prompt_thread, NULL, prompt_cycle, NULL); 
     while(1)
     {
         unsigned int len_new = sizeof(new_connection);
@@ -39,7 +42,8 @@ int main() // main thread: listener
             struct client_info *ci = (struct client_info*)malloc(sizeof(struct client_info));
             ci->addr = new_connection.sin_addr.s_addr;
             ci->socket = new_sock;
-            pthread_create(&server_processes[status.n_connessioni++], NULL, serv_client, ci);
+            pthread_create(&server_processes[status.n_connessioni], NULL, serv_client, ci);
+            pthread_detach(server_processes[status.n_connessioni++]);
         }
         else 
         {// se ho tutti i thread occupati aspetto che uno si liberi.

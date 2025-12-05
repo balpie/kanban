@@ -163,8 +163,9 @@ void *prompt_cycle_function(void* self_info)
                 // terminazione programma
                 exit(0);
             case CMD_INVALID:
+            case CMD_STAMPA_UTENTI_CONNESSI:
                 printf(">! comando inesistente, o prefisso comune a più comandi\n");
-                break;
+                continue;
             case CMD_CREATE_CARD:
                 if(!pthread_mutex_trylock(&created_m))
                 {
@@ -176,6 +177,10 @@ void *prompt_cycle_function(void* self_info)
                     printf(">! Impossibile creare la carta adesso\n");
                     continue;
                 }
+                break;
+            case CMD_SHOW_LAVAGNA:
+                printf("[dbg] prompt: Arrivato comando show lavagna\n\tcmd_head: %d\n\tcmd_tail: %d\n",
+                        cmd_head, cmd_tail);
                 break;
         }   
         cmd_queue[cmd_head] = c;

@@ -32,6 +32,7 @@ int get_msg(int, void*, size_t);
 // send card al socket passato per indirizzo
 int send_card(int, task_card_t *);
 
+// socket da cui ricevere la card, dimensione card
 task_card_t* recive_card(int, size_t);
 
 #endif

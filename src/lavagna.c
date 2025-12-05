@@ -65,6 +65,36 @@ connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checkin
     return conn; // assumo successo
 }
 
+void send_lavagna(int sock ,lavagna_t *lavagna)
+{
+    printf("[dbg] send_lavagna\n");
+    // conto numero di cards
+    lavagna_t *p = lavagna;
+    uint8_t count = 0;
+    while(p)
+    {
+        count++;
+        p = p->next;
+    }
+    unsigned char instr_to_client[2]; 
+    if(!count)
+    {
+        instr_to_client[0] = instr_to_client[1] = INSTR_EMPTY;
+        send_msg(sock, instr_to_client, 2);
+        return;
+    }
+    instr_to_client[0] = INSTR_SHOW_LAVAGNA;
+    instr_to_client[1] = count;
+    printf("[dbg] send_lavagna, \n\tcount: %d\n", instr_to_client[1]);
+    send_msg(sock, instr_to_client, 2); // invio la quantità di card
+    p = lavagna;
+    for(uint8_t i = 0; i < count; i++)
+    {
+        send_card(sock, &p->card);
+        p = p->next;
+    }
+}
+
 void* serv_client(void* cl_info) 
 {
   // socket   
@@ -89,24 +119,22 @@ void* serv_client(void* cl_info)
         }
         switch(instr_from_client[0]) // in base a cosa vuole fare il client lo servo...
         {
-                                     
         // RECIVE_CARD
         case INSTR_NEW_CARD:
-            printf("dbg> recive_card, dim_desc_card: %lu\n", (size_t)instr_from_client[1]);
             task_card_t *card = recive_card(connessione->socket, (size_t)instr_from_client[1]);
-            printf("dbg> insert_into_lavagna\n");
             insert_into_lavagna(&lavagna, card); // salva la descrizione nella lista
             free(card); 
-                        
-            printf("dbg> show_lavagna\n");
+
             show_lavagna(lavagna);
             printf("\nlavagna> ");
             fflush(stdout);
             break;
         case INSTR_SHOW_LAVAGNA:
             printf(">> Invia tutte le card della lavagna all'utente\n");
+            send_lavagna(connessione->socket, lavagna);
             break;
         case INSTR_NOP:
+            // Ne client ne server hanno "da fare"
             sleep(1); 
             break;
         }

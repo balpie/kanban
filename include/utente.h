@@ -19,6 +19,10 @@ extern int cmd_tail;
 extern task_card_t *created;
 extern pthread_mutex_t created_m;
 
+// lavagna corrente. L'utente assuma che non sia mai up to date: 
+// ogni volta che la vuole vedere chiede alla lavagna le card attuali e le aggiorna
+extern lavagna_t* lavagna;
+
 // Funzione del thread che gestisce il prompt. 
 // Inserisce comandi nella cmd_queue, in modo che 
 // il main thread li possa eseguire, se hanno bisogno di comunicare con la lavagna

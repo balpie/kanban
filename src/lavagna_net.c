@@ -57,16 +57,17 @@ int remove_connection(connection_l_e **headptr, int sock)
     }
     if(!prec) // rimozione in testa
     {
-        if (close((*headptr)->socket) < 0)
+        if(close((*headptr)->socket) < 0)
         {
             perror("[remove_connection] errore close");
         }
+
         *headptr = (*headptr)->next;
         free(iter);
         return 1;
     }
     // rimozione altrove
-    if (close(iter->socket) < 0)  
+    if(close(iter->socket) < 0)  
     {
         perror("[remove_connection] errore close");
     }

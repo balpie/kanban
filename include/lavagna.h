@@ -38,6 +38,8 @@ void cleanup(int, connection_l_e**);
 // Viene eseguita ogni volta che viene ricevuta 
 // un'informazione da parte di un utente
 
+// manda tutte le card via socket
+void send_lavagna(int, lavagna_t*);
 // SHOW_LAVAGNA:
 // Viene mostrata la lavagna, con le card assegnate ognuna alla giusta colonna
 
