@@ -74,9 +74,18 @@ int main(int argc, char* argv[])
                 // posso mandare la card
                 send_card(server_sock, created); // manda card al server
                 free(created->desc); // libero la descrizione, anc'essa allocata nello heap
-                free(created); // libero la card
+                free(created); // libero la card TODO ????? Ti serve per quando l'hai finita
                 pthread_mutex_unlock(&created_m);
                 printf("\n>> carta mandata!\n");
+                get_msg(server_sock, instr_from_server, 2);
+                if(instr_from_server[0] == INSTR_ACK)
+                {
+                    printf("\n>> carta valida!\n");
+                }
+                else
+                {
+                    printf("\n>> carta non valida!\n");
+                }
                 printf("utente> ");
                 fflush(stdout);
                 break;

@@ -20,8 +20,6 @@
 
 #define INSTR_SHOW_LAVAGNA '5' // indica una richiesta da parte dell'utente di mandare
                                // tutte le card della lavagna
-
-
 #define LAVAGNA_PORT 5678
 #define LAVAGNA_ADDR "127.0.0.1"
 

@@ -34,18 +34,32 @@ void* prompt_cycle(void *)
     exit(0);
 }
 
-int gia_registrato(uint16_t port)
+lavagna_t* get_card(uint8_t id)
+{
+    lavagna_t* p = lavagna;
+    while(p)
+    {
+        if(p->card.id == id)
+        {
+            return p;
+        }
+        p = p->next;
+    }
+    return NULL;
+}
+
+connection_l_e* get_connection(uint16_t port)
 {
     connection_l_e* p = lista_connessioni.head;
     while(p)
     {
         if(p->port_id == port)
         {
-            return 1;
+            return p;
         }
         p = p->next;
     }
-    return 0;
+    return NULL;
 }
 
 connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checking
@@ -56,7 +70,7 @@ connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checkin
     // identificativa, che gli permette di parlare con gli altri
     get_msg(socket, (void*)&port, 2); 
     pthread_mutex_lock(&lista_connessioni.m);
-    if(gia_registrato(ntohs(port))) 
+    if(get_connection(ntohs(port))) // se c'è già un utente con tale id
     {
         pthread_mutex_unlock(&lista_connessioni.m);
         instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN; // Comunico al client che la registrazione
@@ -155,6 +169,18 @@ void* serv_client(void* cl_info)
         // RECIVE_CARD
         case INSTR_NEW_CARD:
             task_card_t *card = recive_card(connessione->socket, (size_t)instr_from_client[1]);
+            if(get_card(card->id))
+            {
+                // Comunico al client l'inserimento non riuscito
+                instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN;
+                send_msg(connessione->socket, instr_to_client, 2);
+                fprintf(stderr, "[dbg] serv_client id card ricevuta già presente\n");
+                free(card);
+                break;
+            }
+            // Comunico al client l'inserimento riuscito
+            instr_to_client[0] = instr_to_client[1] = INSTR_ACK;
+            send_msg(connessione->socket, instr_to_client, 2);
             insert_into_lavagna(&lavagna, card); // salva la descrizione nella lista
             free(card); 
 
