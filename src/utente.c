@@ -179,7 +179,7 @@ void *prompt_cycle_function(void* self_info)
                 }
                 break;
             case CMD_SHOW_LAVAGNA:
-                printf("[dbg] prompt: Arrivato comando show lavagna\n\tcmd_head: %d\n\tcmd_tail: %d\n",
+                fprintf(stderr, "[dbg] prompt: Arrivato comando show lavagna\n\tcmd_head: %d\n\tcmd_tail: %d\n",
                         cmd_head, cmd_tail);
                 break;
         }   

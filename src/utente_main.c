@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
         }
         c = cmd_queue[cmd_tail];
         cmd_tail = (cmd_tail + 1) % MAX_QUEUE_CMD;
-        printf("[dbg] main: comando arrivato: %c\n", c);
+        fprintf(stderr ,"[dbg] main: comando arrivato: %c\n", c);
         switch(c)
         {
             case CMD_CREATE_CARD:
@@ -81,14 +81,14 @@ int main(int argc, char* argv[])
                 fflush(stdout);
                 break;
             case CMD_SHOW_LAVAGNA:
-                printf("[dbg]: arrivato comando SHOW_LAVAGNA\n");
+                fprintf(stderr, "[dbg]: arrivato comando SHOW_LAVAGNA\n");
                 // Prendi instr from server, che indicherà la quantità di card presenti nella lavagna
                 // Se il byte di stato è INSTR_EMPTY il secondo byte non è significativo, e la lavagna è
                 // vuota
                 // Comunico il mio intento al server
                 instr_to_server[0] = INSTR_SHOW_LAVAGNA;
                 send_msg(server_sock, instr_to_server, 2);
-                printf("[dbg]: mi faccio dire da lavagna quante card ho da ricevere\n");
+                fprintf(stderr, "[dbg]: mi faccio dire da lavagna quante card ho da ricevere\n");
                 get_msg(server_sock, instr_from_server, 2);
                 if(instr_from_server[0] == INSTR_EMPTY)
                 {
@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
                 uint8_t count = instr_from_server[1];
                 for(uint8_t i = 0; i < count; i++)
                 {
-                    printf("[dbg] main, valuto card %d-esima\n", i+1);
+                    fprintf(stderr, "[dbg] main, valuto card %d-esima\n", i+1);
                     // TODO Error checking
                     // ricevo dimensione descrizione card
                     get_msg(server_sock, instr_from_server, 2);
@@ -108,6 +108,7 @@ int main(int argc, char* argv[])
                     task_card_t *cc = recive_card(server_sock, instr_from_server[1]);
                     // la inserisco nella lavagna vuota
                     insert_into_lavagna(&lavagna, cc);
+                    free(cc);
                 }
                 show_lavagna(lavagna);
                 libera_lavagna(lavagna);

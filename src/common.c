@@ -65,7 +65,6 @@ void insert_into_lavagna(lavagna_t **l, task_card_t *card)
 {
     lavagna_t* new = (lavagna_t*)malloc(sizeof(lavagna_t)); 
     copia_card(card, &(new->card)); 
-    // TODO free(card)??????????????
     if(!*l)
     {
         (*l) = new;

@@ -81,10 +81,10 @@ int get_msg(int sock, void *buf, size_t size)
         if(recived < size)  // gestisci caso recived == 2 == size ma è ping-pong
         {
 #ifdef IS_LAVAGNA
-            printf("dbg> Sono la lavagna!\n");
+            fprintf(stderr, "[dbg] Sono la lavagna!\n");
             // aggiorna info ping-pong
 #else 
-            printf("dbg> Sono utente!\n");
+            fprintf(stderr, "[dbg] Sono utente!\n");
             // manda pong
             // ricevi nuovo messaggio, che dovrebbe essere quello expected
 #endif

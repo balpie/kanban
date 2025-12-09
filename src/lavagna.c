@@ -67,7 +67,7 @@ connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checkin
 
 void send_lavagna(int sock ,lavagna_t *lavagna)
 {
-    printf("[dbg] send_lavagna\n");
+    fprintf(stderr, "[dbg] send_lavagna\n");
     // conto numero di cards
     lavagna_t *p = lavagna;
     uint8_t count = 0;
@@ -85,7 +85,7 @@ void send_lavagna(int sock ,lavagna_t *lavagna)
     }
     instr_to_client[0] = INSTR_SHOW_LAVAGNA;
     instr_to_client[1] = count;
-    printf("[dbg] send_lavagna, \n\tcount: %d\n", instr_to_client[1]);
+    fprintf(stderr, "[dbg] send_lavagna, \n\tcount: %d\n", instr_to_client[1]);
     send_msg(sock, instr_to_client, 2); // invio la quantità di card
     p = lavagna;
     for(uint8_t i = 0; i < count; i++)
