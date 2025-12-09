@@ -6,6 +6,22 @@
 // non può inserire in descrizione
 #define PING_PONG_MSG (char)0
 
+// Definizioni macro che iniziano con INSTR relative a "comandi"  inviati dal
+// client al server o viceversa 
+#define INSTR_NOP '0' // no card disponibili in todo, quindi l'utente non ha nulla da fa
+#define INSTR_EMPTY '1' // Lista da mandare vuota
+#define INSTR_TAKEN '2' // port o task id
+#define INSTR_ACK '3'
+
+
+// ISTRUZIONI DAL CLIENT
+#define INSTR_NEW_CARD '4' // il successivo byte ricevuto è la dimensione della card che verrà 
+                           // inviata successivamente dall'utente
+
+#define INSTR_SHOW_LAVAGNA '5' // indica una richiesta da parte dell'utente di mandare
+                               // tutte le card della lavagna
+
+
 #define LAVAGNA_PORT 5678
 #define LAVAGNA_ADDR "127.0.0.1"
 

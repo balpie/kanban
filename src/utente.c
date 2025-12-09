@@ -28,11 +28,18 @@ int registra_utente(int port)
     int nport = htons(port);
     if(send_msg(sd, &nport, 2)) // mando al server la mia porta per registrarmi
     {
-        printf(">> Registrazione effettuata con successo \n");
+        char instr_from_server[2];
+        get_msg(sd, instr_from_server, 2);
+        if(instr_from_server[1] == INSTR_TAKEN)
+        {
+            printf(">! registrazione fallita: porta già utilizzata da un altro client\n");
+            close(sd);
+            exit(-1);
+        }
     }
     else
     {
-        printf(">> quitting\n");
+        printf(">> registrazione fallita per motivo server\n");
         close(sd);
         exit(-1);
     }

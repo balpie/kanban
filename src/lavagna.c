@@ -34,31 +34,40 @@ void* prompt_cycle(void *)
     exit(0);
 }
 
-    // TODO Se sono presenti card todo
-    // e ho più di 2 utenti, mando la card a tutti così quelli 
-    // scelgono chi la fa... 
-    // Per fare questo da lato client a questo punto aspetto un messaggio dal server
-    // che indichi cosa fare 
-    // casi possibili sono:
-    //  - card da fare disponibili
-    //      quindi ricevi card, lista connessi e contatta i connessi
-    //  - card da fare non disponibili
-    //      quindi aspetta, eventualmente manda card
-    //  - ping (se l'utente ha una card in todo)
-    //      questo 
-      
-    // il primo byte  indica lo stato (se ci sono card disponibili, o altro)
-    // il secondo byte indica eventuale dimensione prossimo messaggio (mai più di 255)
-    // non è significativo nel caso in cui non sia implicita un'altra trasmissione
-    // nello stato indicato dal primo byte
-// argomento passato: connection_l relativo al client da servire
+int gia_registrato(uint16_t port)
+{
+    connection_l_e* p = lista_connessioni.head;
+    while(p)
+    {
+        if(p->port_id == port)
+        {
+            return 1;
+        }
+        p = p->next;
+    }
+    return 0;
+}
+
 connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checking
 {
+    char instr_to_client[2];
     uint16_t port; // port_id
     // il primo messaggio che ogni client deve mandare è la propria porta
     // identificativa, che gli permette di parlare con gli altri
     get_msg(socket, (void*)&port, 2); 
     pthread_mutex_lock(&lista_connessioni.m);
+    if(gia_registrato(ntohs(port))) 
+    {
+        pthread_mutex_unlock(&lista_connessioni.m);
+        instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN; // Comunico al client che la registrazione
+                                                               // non è andata a buon fine
+        send_msg(socket, instr_to_client, 2);
+        close(socket);
+        return NULL;
+    }
+    instr_to_client[0] = instr_to_client[1] = INSTR_ACK; // Comunico al client che la registrazione è 
+                                                         // andata a buon fine
+    send_msg(socket, instr_to_client, 2);
     connection_l_e* conn = insert_connection(&(lista_connessioni.head), socket, ntohs(port), addr); 
     pthread_mutex_unlock(&lista_connessioni.m);
     status.n_connessioni++;
@@ -95,6 +104,26 @@ void send_lavagna(int sock ,lavagna_t *lavagna)
     }
 }
 
+
+    // TODO Se sono presenti card todo
+    // e ho più di 2 utenti, mando la card a tutti così quelli 
+    // scelgono chi la fa... 
+    // Per fare questo da lato client a questo punto aspetto un messaggio dal server
+    // che indichi cosa fare 
+    // casi possibili sono:
+    //  - card da fare disponibili
+    //      quindi ricevi card, lista connessi e contatta i connessi
+    //  - card da fare non disponibili
+    //      quindi aspetta, eventualmente manda card
+    //  - ping (se l'utente ha una card in todo)
+    //      questo 
+      
+    // il primo byte  indica lo stato (se ci sono card disponibili, o altro)
+    // il secondo byte indica eventuale dimensione prossimo messaggio (mai più di 255)
+    // non è significativo nel caso in cui non sia implicita un'altra trasmissione
+    // nello stato indicato dal primo byte
+// argomento passato: connection_l relativo al client da servire
+
 void* serv_client(void* cl_info) 
 {
   // socket   
@@ -102,6 +131,10 @@ void* serv_client(void* cl_info)
     // Sotto variabile che punta alla connessione servita da questo thread
     connection_l_e* connessione = registra_client(cl_in->socket, cl_in->addr); 
     free(cl_in);
+    if(!connessione) // caso più di un utente con la stessa porta
+    {
+        return NULL;
+    }
     unsigned char instr_to_client[2]; // messaggio di istruzioni da mandare al client
     unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
     for(;;)

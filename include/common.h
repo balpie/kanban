@@ -10,18 +10,6 @@
 #define DOING_COL 1
 #define DONE_COL 2
 
-// STATI SERVER
-#define INSTR_NOP '0' // no card disponibili in todo, quindi l'utente non ha nulla da fa
-#define INSTR_EMPTY '1' // Lista da mandare vuota
-
-
-// ISTRUZIONI DAL CLIENT
-#define INSTR_NEW_CARD '1' // il successivo byte ricevuto è la dimensione della card che verrà 
-                           // inviata successivamente dall'utente
-
-#define INSTR_SHOW_LAVAGNA '2' // indica una richiesta da parte dell'utente di mandare
-                               // tutte le card della lavagna
-
 // COMANDI
 #define CMD_STR_CREATE_CARD "CREATE_CARD"
 #define CMD_STR_QUIT "QUIT"

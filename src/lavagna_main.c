@@ -27,8 +27,6 @@ int main() // main thread: listener
     pthread_t server_processes[MAX_SERVER_PROCS];
     pthread_mutex_init(&lista_connessioni.m, 0);
     // creo il thread per interazione via terminale
-    // Non importa fare detach perchè se si finisce vuol dire che il programma 
-    // è finito
     pthread_create(&prompt_thread, NULL, prompt_cycle, NULL); 
     while(1)
     {
