@@ -10,6 +10,9 @@
 
 lavagna_t *lavagna = NULL;
 // coda circolare dei comandi
+// Visto che siamo in caso Single Producer - Single Consumer
+// la coda circolare dovrebbe essere thread safe.
+// TODO NON E VERO PERCHE IL COMPILATORE PUO RIORDINARE 
 char cmd_queue[MAX_QUEUE_CMD];
 task_card_t *created = NULL;
 pthread_mutex_t created_m;
@@ -47,12 +50,40 @@ int main(int argc, char* argv[])
         
     for(;;) // Ciclo di comunicazione con server
     {
-        char instr_to_server[2];
-        char instr_from_server[2];
+        unsigned char instr_to_server[2];
+        unsigned char instr_from_server[2];
         get_msg(server_sock, instr_from_server, 2);
-        // IF instr_from_server[0] == INSTR_NOP
-        // ovvero, il client decide cosa fare solo nel caso in cui il server
-        // non ha nulla da fare
+        if(instr_from_server[0] == INSTR_AVAL_CARD)
+        {
+            fprintf(stderr, "[dbg] main: mi devono arrivare %u peers", instr_from_server[1]);
+            for(uint8_t i = 0; i < instr_from_server[1]; i++)
+            {
+                peer_list *pp = recive_peer(server_sock);
+                fprintf(stderr, "[dbg] main -%u- peer_port: %u\t peer_addr %u\n",i ,pp->port, pp->addr);
+                free(pp);
+            }
+            // richiedo la dimensione della card
+            get_msg(server_sock, instr_from_server, 2);
+            fprintf(stderr, "[dbg] main, card arriva di dimensione %u\n", instr_from_server[1]);
+            task_card_t *contended_card = recive_card(server_sock, (uint8_t)instr_from_server[1]);
+
+            fprintf(stderr, "[dbg] main, card ricevuta: \n");
+            show_card(contended_card);
+
+            // Mando ack per dire al server che ho ricevuto card e peers
+            instr_to_server[0] = instr_to_server[1] = INSTR_ACK_PEERS; 
+            send_msg(server_sock, instr_to_server, 2);
+
+            // Aspetto che tutti i client siano pronti
+            get_msg(server_sock, instr_from_server, 2);
+
+            // p2p()...
+            uint16_t winner = 7;
+            send_msg(server_sock, (void*)&winner, 2);
+            // provvisoriamente assumo che il vincitore sia un utente
+            // immaginario con porta id 7
+            continue;
+        }
         char c;
         if(cmd_tail == cmd_head) // caso in cui non ho comandi da eseguire
         {
@@ -74,7 +105,9 @@ int main(int argc, char* argv[])
                 // posso mandare la card
                 send_card(server_sock, created); // manda card al server
                 free(created->desc); // libero la descrizione, anc'essa allocata nello heap
-                free(created); // libero la card TODO ????? Ti serve per quando l'hai finita
+
+                 // libero la card 
+                free(created); 
                 pthread_mutex_unlock(&created_m);
                 printf("\n>> carta mandata!\n");
                 get_msg(server_sock, instr_from_server, 2);

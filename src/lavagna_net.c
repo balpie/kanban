@@ -1,4 +1,5 @@
 #include "../include/lavagna_net.h"
+#include "../include/lavagna.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -76,3 +77,35 @@ int remove_connection(connection_l_e **headptr, int sock)
     return 1;
 }
 
+void send_connection(int sock, connection_l_e* conn)
+{
+    uint16_t port = htons(conn->port_id); 
+    uint32_t addr = htonl(conn->addr);
+    send_msg(sock, &port, 2);
+    send_msg(sock, &addr, 4);
+}
+
+// TODO gestione caso disconnessione di un client 
+void send_conn_list(int sock, connection_l_e* escluso, uint8_t quanti)
+{
+    connection_l_e* p = lista_connessioni.head;
+    while(p)
+    {
+        if(p != escluso && p->to_send)
+        {
+            send_connection(sock, p);
+            quanti--;
+        }
+        p = p->next;
+    }
+    connection_l_e dummy;
+    dummy.port_id = 5678;
+    dummy.addr = 5678;
+    // caso disconnessione inaspettata
+    // starà ai client comunicare l'esito fallito dell'operazione
+    while(quanti > 0)
+    {
+        quanti--;
+        send_connection(sock, &dummy);
+    }
+}

@@ -56,7 +56,7 @@ void show_lavagna(lavagna_t *l);
 void insert_into_lavagna(lavagna_t **l, task_card_t *card);
 
 // rimuove la task id dalla lavagna. Utile per riordinarla
-lavagna_t* remove_from_lavagna(lavagna_t **, uint8_t);
+lavagna_t* extract_from_lavagna(lavagna_t **, uint8_t);
 
 char prompt_line(char*);
 

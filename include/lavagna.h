@@ -5,7 +5,6 @@
 // Massimo 100 processi client serviti contemporaneamente
 #define MAX_SERVER_PROCS 100
 
-
 struct client_info{
     int socket;
     uint32_t addr; // network order
@@ -13,14 +12,20 @@ struct client_info{
 
 struct server_status{
     int n_connessioni;
-    int status; 
-    pthread_rwlock_t rwlock;
+    uint8_t status; 
+    pthread_mutex_t m;
+    pthread_cond_t cv;
+    uint8_t sent; // indica il numero di utenti a cui è stata già mandata la card (valido se 
+                  // c'è una card da mandare e abbastanza utenti)
+    uint8_t total; // indica il numero di utenti collegati alla lavagna nel momento
+                   // in cui una card viene "etichettata come tosend"
 };
 
 // Variabili globali
 extern connection_l lista_connessioni;
 extern int sock_listener; // in modo da poter terminare dai thread
 extern lavagna_t *lavagna;
+extern pthread_rwlock_t m_lavagna;
 extern struct server_status status;
 // THREADS
 void* prompt_cycle(void *);
@@ -43,6 +48,7 @@ void send_lavagna(int, lavagna_t*);
 // SHOW_LAVAGNA:
 // Viene mostrata la lavagna, con le card assegnate ognuna alla giusta colonna
 
+
 // SEND_USER_LIST:
 // Manda la lista delle porte degli utenti 
 
@@ -55,6 +61,5 @@ void send_lavagna(int, lavagna_t*);
 // Comunica a tutti gli utenti la prima carta disponibile nella colonna
 // todo, e la lista degli utenti presenti
 // escluso l'utente a cui viene mandato.
-
 
 #endif

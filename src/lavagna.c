@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h> 
 #include <pthread.h>
+#include <string.h>
 
 void* prompt_cycle(void *)
 {
@@ -21,7 +22,9 @@ void* prompt_cycle(void *)
                 pthread_mutex_unlock(&lista_connessioni.m);
                 break;
             case CMD_SHOW_LAVAGNA:
+                pthread_rwlock_rdlock(&m_lavagna);
                 show_lavagna(lavagna);
+                pthread_rwlock_unlock(&m_lavagna);
                 break;
             case CMD_INVALID:
             default:
@@ -119,24 +122,85 @@ void send_lavagna(int sock ,lavagna_t *lavagna)
 }
 
 
-    // TODO Se sono presenti card todo
-    // e ho più di 2 utenti, mando la card a tutti così quelli 
-    // scelgono chi la fa... 
-    // Per fare questo da lato client a questo punto aspetto un messaggio dal server
-    // che indichi cosa fare 
-    // casi possibili sono:
-    //  - card da fare disponibili
-    //      quindi ricevi card, lista connessi e contatta i connessi
-    //  - card da fare non disponibili
-    //      quindi aspetta, eventualmente manda card
-    //  - ping (se l'utente ha una card in todo)
-    //      questo 
-      
     // il primo byte  indica lo stato (se ci sono card disponibili, o altro)
     // il secondo byte indica eventuale dimensione prossimo messaggio (mai più di 255)
     // non è significativo nel caso in cui non sia implicita un'altra trasmissione
     // nello stato indicato dal primo byte
 // argomento passato: connection_l relativo al client da servire
+
+
+// Quando mando all'utente una carta disponibile gli mando:
+//      - tutti gli utenti meno se stesso
+//      - la card in questione (completa)
+// L'utente aspetterà tot tempo (3 secondi)
+// Quando sarà finito questo tempo, invierà agli altri il suo costo, e richiederà agli altri il loro
+// una volta terminata questa operazione, gli utenti senza la card dichiareranno che la card non è loro, 
+// e l'utente con la card dichiarerà che la card è sua
+uint8_t eval_status()
+{
+    // Ordine locking: prima status, poi connessioni, poi lavagna
+
+    // Se lo stato è già questo, c'è già una avaliable card che sta essendo processata
+    pthread_mutex_lock(&status.m);
+    if(status.status == INSTR_AVAL_CARD)
+    {
+        pthread_mutex_unlock(&status.m);
+        return INSTR_AVAL_CARD;
+    }
+    pthread_rwlock_rdlock(&m_lavagna);
+    // altrimenti si valuta se è presente una card assegnabile
+    if(lavagna && lavagna->card.colonna == TODO_COL)
+    {
+        if(status.n_connessioni >= 2)
+        {
+            // alle connessioni presenti auttualmente metto come
+            // tosend la prima card di todo_list
+            int count = 0;
+            connection_l_e *p = lista_connessioni.head;
+            while(p)
+            {
+                p->to_send = &lavagna->card;
+                p = p->next;
+                count++;
+            }
+            status.total = count;
+            status.sent = 0;
+            status.status = INSTR_AVAL_CARD;
+            pthread_mutex_unlock(&status.m);
+            pthread_rwlock_unlock(&m_lavagna);
+            return INSTR_AVAL_CARD;
+        }
+    }
+    pthread_mutex_unlock(&status.m);
+    pthread_rwlock_unlock(&m_lavagna);
+    return status.status; // lo status rimane il solito (che sia users_choosing o instr_nop)
+}
+
+// come insert_into_lavagna ma inserisce direttamente un elemento e non ne alloca uno nuovo
+void insert_lavagna_elem(lavagna_t** lp, lavagna_t*elem)
+{
+    if(!*lp) 
+    {
+        (*lp) = elem;
+        elem->next = NULL;
+        return;
+    }
+    lavagna_t *iter = *lp;
+    lavagna_t *prec = NULL;
+    while(iter && iter->card.colonna < elem->card.colonna)
+    {
+        prec = iter;
+        iter = iter->next;
+    }
+    if(!prec) // inserimento in testa
+    {
+        elem->next = iter;
+        *lp = elem;
+        return;
+    }
+    prec->next = elem;
+    elem->next = iter;
+}
 
 void* serv_client(void* cl_info) 
 {
@@ -153,8 +217,84 @@ void* serv_client(void* cl_info)
     unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
     for(;;)
     {
-        instr_to_client[0] = INSTR_NOP; // nulla da fare
-                                // quindi non mi interessa cosa c'è in instr_to_client[2]
+        instr_to_client[0] = eval_status(); 
+        if(instr_to_client[0] == INSTR_AVAL_CARD)
+        {
+            if(connessione->to_send != NULL)
+            {
+                // TODO concorrenza
+                // manda robe
+                instr_to_client[1] = status.total - 1;
+                // dico al client che una card è avaliable, e gli dico il numero di peer che avrà
+                send_msg(connessione->socket, instr_to_client, 2); 
+                // mando la lista di tutti tranne se 
+                send_conn_list(connessione->socket, connessione, status.total - 1);
+                // mando la card
+                send_card(connessione->socket, &lavagna->card);
+                // aspetto su conditional variable di stato che tutti i thread abbiano mandato 
+                // card e connessioni al proprio utente
+                get_msg(connessione->socket, instr_from_client, 2); 
+                // assumo sia un ack perchè non mi può mandare altro
+                // Ora che so che il mio client ha ricevuto card e cose 
+                status.sent++;
+
+                pthread_mutex_lock(&status.m);
+                while(status.total != status.sent)
+                {
+                    pthread_cond_wait(&status.cv, &status.m);
+                }
+                // sveglio gli altri...
+                pthread_cond_broadcast(&status.cv);
+                instr_to_client[0] = instr_to_client[1] = INSTR_CLIENTS_READY;
+                // Qui dico all'utente che può mandare le cose agli altri, visto che
+                // hanno ricevuto dati su altri client e card
+                send_msg(connessione->socket, instr_to_client, 2);
+                pthread_mutex_unlock(&status.m);
+                // A questo punto aspetto da ogni client la risposta, che dovrebbe essere 
+                // il numero di porta del client che si "aggiudica" la task
+                get_msg(connessione->socket, instr_from_client, 2);
+                uint16_t task_buddy;
+                memcpy((void*)&task_buddy, instr_from_client, 2);
+                task_buddy = htons(task_buddy); 
+                fprintf(stderr, "[dbg] serv_client: La task va a: %u\n", task_buddy);
+
+                // inserisco la card del vincitore nella lavagna
+                pthread_rwlock_wrlock(&m_lavagna);
+                lavagna_t* contended = extract_from_lavagna(&lavagna, lavagna->card.id);
+                contended->card.colonna = DOING_COL;
+                contended->card.utente = task_buddy;
+                insert_lavagna_elem(&lavagna, contended);
+                pthread_rwlock_unlock(&m_lavagna);
+                
+                // A questo punto devo disfare le cose di status
+                // ordine lock: status, connessioni, lavagna
+                pthread_mutex_lock(&status.m);
+                if(status.total != 0)
+                {
+                    status.total = 0;
+                    status.sent = 0;
+                    pthread_mutex_lock(&lista_connessioni.m);
+                    connection_l_e *p = lista_connessioni.head;
+                    while(p)
+                    {
+                        if(p->to_send)
+                            p->to_send = NULL;
+                        p = p->next;
+                    }
+                    pthread_mutex_unlock(&lista_connessioni.m);
+                    status.status = INSTR_NOP;
+                }
+                pthread_mutex_unlock(&status.m);
+
+                sleep(1);  // scritta per ora in quanto questo branch equivalente a instr_nop
+                continue;
+            }
+            else // se il thread ha già mandato, aspetta
+            {
+                sleep(1);
+                continue;
+            }
+        }
         send_msg(connessione->socket, instr_to_client, 2);
             // passo al client la possibilità di decidere che fare  
         if(!get_msg(connessione->socket, instr_from_client, 2)) 
@@ -162,7 +302,10 @@ void* serv_client(void* cl_info)
             pthread_mutex_lock(&lista_connessioni.m);
             remove_connection(&(lista_connessioni.head), connessione->socket);
             pthread_mutex_unlock(&lista_connessioni.m);
-            break;
+            pthread_mutex_lock(&status.m);
+            status.n_connessioni--;
+            pthread_mutex_unlock(&status.m);
+            pthread_exit(NULL); // connessione terminata, termino thread
         }
         switch(instr_from_client[0]) // in base a cosa vuole fare il client lo servo...
         {
@@ -181,16 +324,24 @@ void* serv_client(void* cl_info)
             // Comunico al client l'inserimento riuscito
             instr_to_client[0] = instr_to_client[1] = INSTR_ACK;
             send_msg(connessione->socket, instr_to_client, 2);
+
+            pthread_rwlock_wrlock(&m_lavagna);
             insert_into_lavagna(&lavagna, card); // salva la descrizione nella lista
+            pthread_rwlock_unlock(&m_lavagna);
+
             free(card); 
 
+            pthread_rwlock_rdlock(&m_lavagna);
             show_lavagna(lavagna);
+            pthread_rwlock_unlock(&m_lavagna);
             printf("\nlavagna> ");
             fflush(stdout);
             break;
         case INSTR_SHOW_LAVAGNA:
             printf(">> Invia tutte le card della lavagna all'utente\n");
+            pthread_rwlock_rdlock(&m_lavagna);
             send_lavagna(connessione->socket, lavagna);
+            pthread_rwlock_unlock(&m_lavagna);
             break;
         case INSTR_NOP:
             // Ne client ne server hanno "da fare"
@@ -204,6 +355,7 @@ void* serv_client(void* cl_info)
 void stampa_utenti_connessi(connection_l_e *head)
 {
     int count = 0;
+    printf(">> ci sono %d utenti connessi in totale: \n", status.n_connessioni);
     while(head!= NULL)
     {
         printf("%d>> port %u\n", ++count, head->port_id);

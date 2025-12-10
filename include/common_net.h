@@ -11,15 +11,21 @@
 #define INSTR_NOP '0' // no card disponibili in todo, quindi l'utente non ha nulla da fa
 #define INSTR_EMPTY '1' // Lista da mandare vuota
 #define INSTR_TAKEN '2' // port o task id
-#define INSTR_ACK '3'
+#define INSTR_ACK '3' // card o utente ricevuto validi e registrati 
+#define INSTR_AVAL_CARD '4' // presenti almeno 2 utenti, e almeno 1 card in colonna TO-DO
+                            // parte il meccanismo di assegnamento della card
+#define INSTR_CLIENTS_READY '5' // server comunica ai client che sono pronti per far partire
+                                // l'interazione di tipo p2p, in quanto hanno tutti ricevuto e acked 
+                                // le loro cose
 
 
 // ISTRUZIONI DAL CLIENT
-#define INSTR_NEW_CARD '4' // il successivo byte ricevuto è la dimensione della card che verrà 
+#define INSTR_NEW_CARD '6' // il successivo byte ricevuto è la dimensione della card che verrà 
                            // inviata successivamente dall'utente
 
-#define INSTR_SHOW_LAVAGNA '5' // indica una richiesta da parte dell'utente di mandare
+#define INSTR_SHOW_LAVAGNA '7' // indica una richiesta da parte dell'utente di mandare
                                // tutte le card della lavagna
+#define INSTR_ACK_PEERS '8'
 #define LAVAGNA_PORT 5678
 #define LAVAGNA_ADDR "127.0.0.1"
 

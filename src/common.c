@@ -88,8 +88,7 @@ void insert_into_lavagna(lavagna_t **l, task_card_t *card)
     new->next = iter;
 }
 
-// non è una rimozione, è più un'estrazione
-lavagna_t* remove_from_lavagna(lavagna_t **l, uint8_t id)
+lavagna_t* extract_from_lavagna(lavagna_t **l, uint8_t id)
 {
     lavagna_t* iter = *l;
     lavagna_t* prec = NULL;

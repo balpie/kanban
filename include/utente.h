@@ -3,6 +3,7 @@
 #include "../include/common.h"
 #include "../include/common_net.h"
 #include <pthread.h>
+#include <stdatomic.h>
 
 #define MAX_QUEUE_CMD 10
 
