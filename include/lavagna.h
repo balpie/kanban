@@ -2,6 +2,8 @@
 #define LAVAGNA_H
 #include "lavagna_net.h"
 
+#define LOGFILE_NAME ".log_lav"
+
 // Massimo 100 processi client serviti contemporaneamente
 #define MAX_SERVER_PROCS 100
 

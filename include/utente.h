@@ -7,6 +7,7 @@
 
 #define MAX_QUEUE_CMD 10
 
+#define COMMON_LOGFILE_NAME ".log_usr"
 
   
 // Coda circolare dei comandi da eseguire

@@ -1,6 +1,7 @@
 *.vim
 *.pdf
 log*
+.log*
 test*
 bin/*
 prova*

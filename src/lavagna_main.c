@@ -28,9 +28,10 @@ int main(int argc, char *argv[]) // main thread: listener
     if(argc < 2 || strcmp(argv[1], "-d")) 
     {
         // TODO error check
-        int logfile = open("./log.lav", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        int logfile = open(LOGFILE_NAME, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         dup2(logfile, STDERR_FILENO); // associo stderr al logfile
         close(logfile);
+        fflush(stderr);
     }
     pthread_mutex_init(&status.m, NULL);
     pthread_rwlock_init(&m_lavagna, NULL);

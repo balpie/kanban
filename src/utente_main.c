@@ -24,7 +24,7 @@ void err_args(char* prg)
 {
         printf(">! utilizzo: %s <porta> [-d]\n", prg);
         printf(">! il parametro <porta> deve essere un intero rappresentabile su 16 bit maggiore di 5678\n");
-        printf(">! passare argomento -d per visualizzare i messaggi di log'");
+        printf(">! passare argomento -d per redirigere il logging da file a schermo\n");
         exit(-1);
 }
 
@@ -42,11 +42,20 @@ int main(int argc, char* argv[])
     if(!user_port || user_port < 5679)
     {
         err_args(argv[0]);
-    }    
-    if(argc == 2 || strcmp(argv[2], "-d")) 
+    } 
+    if(argc != 3 || strcmp(argv[2], "-d"))// se gli argomenti non sono esattamente 2, e il secondo non è -d
     {
-        int logfile = open("./log.usr", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        // TODO error check
+        // redirigo i messaggi di errore a un file
+        printf(">> Redirigo stderr a un file\n");
+
+        // nome log file di dimensione strlen(prefisso) + (massimo numero cifre uint16_t) + '\0'
+        char logfilename[strlen(COMMON_LOGFILE_NAME) + 5 + 1];
+        sprintf(logfilename, "%s%u", COMMON_LOGFILE_NAME, user_port);
+        int logfile = open(logfilename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         dup2(logfile, STDERR_FILENO); // associo stderr al logfile
+        close(logfile);
+        fflush(stderr);
     }
     printf(">> Registrazione al server con porta %u...\n", user_port);
     int server_sock = registra_utente(user_port);
@@ -57,18 +66,31 @@ int main(int argc, char* argv[])
         
     for(;;) // Ciclo di comunicazione con server
     {
+        peer_list *peers = NULL;
         unsigned char instr_to_server[2];
         unsigned char instr_from_server[2];
         get_msg(server_sock, instr_from_server, 2);
         if(instr_from_server[0] == INSTR_AVAL_CARD)
         {
-            fprintf(stderr, "[dbg] main: mi devono arrivare %u peers", instr_from_server[1]);
+            // Lista di peer per questa card
+            deallocate_list(&peers);
+            peers = NULL;
+            fprintf(stderr, "[dbg] main: devono arrivare %u peers\n", instr_from_server[1]);
             for(uint8_t i = 0; i < instr_from_server[1]; i++)
             {
                 peer_list *pp = recive_peer(server_sock);
-                fprintf(stderr, "[dbg] main -%u- peer_port: %u\t peer_addr %u\n",i ,pp->port, pp->addr);
-                free(pp);
+                if(pp)
+                {
+                    fprintf(stderr, "[dbg] chiamo insert_peer su \n\taddr: %u\n\tport: %u\n", 
+                            pp->addr, pp->port);
+                    insert_peer(&peers, pp);
+                }
+                else
+                {
+                    fprintf(stderr, "[dbg] main: errore ricezione peer\n");
+                }
             }
+            print_peers(peers);
             // richiedo la dimensione della card
             get_msg(server_sock, instr_from_server, 2);
             fprintf(stderr, "[dbg] main, card arriva di dimensione %u\n", instr_from_server[1]);
