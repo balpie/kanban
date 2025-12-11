@@ -41,7 +41,6 @@ uint64_t ntohll(uint64_t num)
 
 // manda size byte di msg via sock
 // ritorna 1 se eseguita con successo
-// TODO loop per caso sent < size
 int send_msg(int sock, void* msg, size_t size)
 {
     ssize_t sent = 0;
@@ -88,8 +87,6 @@ int get_msg(int sock, void *buf, size_t size)
             // manda pong
             // ricevi nuovo messaggio, che dovrebbe essere quello expected
 #endif
-            printf("\n>! Errore recv interlocutore:\n\tRicevuto %lu invece di %lu", recived, size);
-            return 0;
         }
     }while (recived < size);
     return 1;

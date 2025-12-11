@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <pthread.h>
 
 lavagna_t *lavagna = NULL;
@@ -21,8 +22,9 @@ int cmd_tail = 0;
 
 void err_args(char* prg)
 {
-        printf(">! utilizzo: %s <porta>\n", prg);
+        printf(">! utilizzo: %s <porta> [-d]\n", prg);
         printf(">! il parametro <porta> deve essere un intero rappresentabile su 16 bit maggiore di 5678\n");
+        printf(">! passare argomento -d per visualizzare i messaggi di log'");
         exit(-1);
 }
 
@@ -41,6 +43,11 @@ int main(int argc, char* argv[])
     {
         err_args(argv[0]);
     }    
+    if(argc == 2 || strcmp(argv[2], "-d")) 
+    {
+        int logfile = open("./log.usr", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        dup2(logfile, STDERR_FILENO); // associo stderr al logfile
+    }
     printf(">> Registrazione al server con porta %u...\n", user_port);
     int server_sock = registra_utente(user_port);
     int self_info[2] = {user_port, server_sock};

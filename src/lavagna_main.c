@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 
 connection_l lista_connessioni;
 
@@ -18,8 +20,18 @@ struct server_status status; // TODO: capire per quale motivo funziona con n_con
 lavagna_t *lavagna = NULL; 
 pthread_rwlock_t m_lavagna;
 
-int main() // main thread: listener
+int main(int argc, char *argv[]) // main thread: listener
 {
+    // uso lazy eval: se ho un argomento solo passo avanti, 
+    // in caso contrario se il primo argomento non è -d 
+    // scrivo i commmenti in un log file
+    if(argc < 2 || strcmp(argv[1], "-d")) 
+    {
+        // TODO error check
+        int logfile = open("./log.lav", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        dup2(logfile, STDERR_FILENO); // associo stderr al logfile
+        close(logfile);
+    }
     pthread_mutex_init(&status.m, NULL);
     pthread_rwlock_init(&m_lavagna, NULL);
     status.n_connessioni = 0;

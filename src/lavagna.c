@@ -338,7 +338,7 @@ void* serv_client(void* cl_info)
             fflush(stdout);
             break;
         case INSTR_SHOW_LAVAGNA:
-            printf(">> Invia tutte le card della lavagna all'utente\n");
+            printf("\n>> Invia tutte le card della lavagna all'utente\n");
             pthread_rwlock_rdlock(&m_lavagna);
             send_lavagna(connessione->socket, lavagna);
             pthread_rwlock_unlock(&m_lavagna);
