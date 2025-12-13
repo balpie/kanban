@@ -3,7 +3,7 @@
 all: utente lavagna
 
 bin:
-	mkdir -p bin
+	mkdir -p bin; mkdir log
 
 lavagna: bin
 	gcc -D IS_LAVAGNA -o bin/lavagna -Wall -g src/lavagna*.c src/common*.c -lpthread

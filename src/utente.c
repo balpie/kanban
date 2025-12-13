@@ -117,7 +117,7 @@ task_card_t *create_card()
     printf(">> inserire id (0 <= id < 256): ");
     if(!fgets(buf, 4, stdin)) // 3 cifre + \n
     {
-        perror(">! errore fgets, la card non è stata creata");
+        printf(">! errore fgets, la card non è stata creata");
         free(new_card);
         return NULL;
     }
