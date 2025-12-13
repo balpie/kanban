@@ -27,6 +27,9 @@
 // utente
 #define CMD_CREATE_CARD 'g'
 
+// valore di porta considerato come nessun utente
+#define NO_USR 1023U
+
 #define MAX_DIM_DESC 256
 // dimensione tale che una task card occupi al più
 // 256 byte, di cui uno per '\0', in modo da poter

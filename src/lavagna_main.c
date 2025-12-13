@@ -11,11 +11,11 @@
 connection_l lista_connessioni;
 
 int sock_listener; // in modo da poter terminare dai thread
-struct server_status status; // TODO: capire per quale motivo funziona con n_connessioni
-                             // come indice del nuovo thread da creare
-                             // (es: ho thread 0 e thread 1. cancello thread 0 => n_connessioni punta a 
-                             // thread 1, ma quando arriva una nuova connessione continua a funzionare quella
-                             // vecchia e funziona anche quella nuova)
+struct server_status status; 
+                             
+                             
+                             
+                             
 
 lavagna_t *lavagna = NULL; 
 pthread_rwlock_t m_lavagna;
@@ -36,14 +36,14 @@ int main(int argc, char *argv[]) // main thread: listener
     pthread_mutex_init(&status.m, NULL);
     pthread_rwlock_init(&m_lavagna, NULL);
     status.n_connessioni = 0;
+    status.winner_arrived = 0;
     struct sockaddr_in listener_addr;
     struct sockaddr_in new_connection;
-    sock_listener = init_listener(&listener_addr);
+    sock_listener = init_listener(&listener_addr, LAVAGNA_PORT);
     int new_sock;
-    int next_thread = 0;
     // Inizializzo strutture dati per i thread
     pthread_t prompt_thread;
-    pthread_t server_processes[MAX_SERVER_PROCS];
+    pthread_t server_processes; 
     pthread_mutex_init(&lista_connessioni.m, 0);
     pthread_cond_init(&status.cv, NULL);
     // creo il thread per interazione via terminale
@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) // main thread: listener
             struct client_info *ci = (struct client_info*)malloc(sizeof(struct client_info));
             ci->addr = new_connection.sin_addr.s_addr;
             ci->socket = new_sock;
-            pthread_create(&server_processes[next_thread], NULL, serv_client, ci);
-            pthread_detach(server_processes[next_thread]);
+            pthread_create(&server_processes, NULL, serv_client, ci);
+            pthread_detach(server_processes);
         }
         else 
         {// se ho tutti i thread occupati aspetto che uno si liberi.

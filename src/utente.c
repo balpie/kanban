@@ -23,6 +23,7 @@ int registra_utente(int port)
     if(connect(sd, (struct sockaddr*)&indirizzo_server, sizeof(indirizzo_server)))
     {
         perror(">! errore connect");
+        close(listener);
         exit(-1);
     }
     int nport = htons(port);
@@ -34,6 +35,7 @@ int registra_utente(int port)
         {
             printf(">! registrazione fallita: porta già utilizzata da un altro client\n");
             close(sd);
+            close(listener);
             exit(-1);
         }
     }
@@ -41,6 +43,7 @@ int registra_utente(int port)
     {
         printf(">> registrazione fallita per motivo server\n");
         close(sd);
+        close(listener);
         exit(-1);
     }
     return sd;
@@ -142,7 +145,7 @@ task_card_t *create_card()
         free(new_card);
         return NULL;
     }
-    new_card->utente = 0; // ancora non è assegnata a nessun utente
+    new_card->utente = NO_USR; // ancora non è assegnata a nessun utente
     return new_card;
 }
 
@@ -168,6 +171,8 @@ void *prompt_cycle_function(void* self_info)
                 continue;
             case CMD_QUIT:
                 // terminazione programma
+                close(listener);
+                close(server_sock);
                 exit(0);
             case CMD_INVALID:
             case CMD_STAMPA_UTENTI_CONNESSI:
@@ -195,6 +200,7 @@ void *prompt_cycle_function(void* self_info)
     }
     // l'utente ha fatto quit
     close(server_sock);
+    close(listener);
     exit(0);
 }
 

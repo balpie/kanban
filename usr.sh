@@ -1,9 +1,9 @@
 #!/bin/bash
-# se passato argomento f sono il primo
+# se passato argomento -f sono il primo
 
 USR_FILE="./.curr_users"
 
-if [[ $1 == f ]]
+if [[ $1 == -f ]]
 then
     echo 5679 > $USR_FILE
 fi

@@ -3,8 +3,6 @@
 #include "common_net.h"
 #include "common.h"
 
-#define MAX_QUEUE 10
-
 typedef struct connection_list_element connection_l_e;
 struct connection_list_element
 {

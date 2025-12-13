@@ -85,7 +85,7 @@ connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checkin
     instr_to_client[0] = instr_to_client[1] = INSTR_ACK; // Comunico al client che la registrazione è 
                                                          // andata a buon fine
     send_msg(socket, instr_to_client, 2);
-    connection_l_e* conn = insert_connection(&(lista_connessioni.head), socket, ntohs(port), addr); 
+    connection_l_e* conn = insert_connection(&(lista_connessioni.head), socket, ntohs(port), ntohl(addr)); 
     pthread_mutex_unlock(&lista_connessioni.m);
     status.n_connessioni++;
     return conn; // assumo successo
@@ -139,7 +139,6 @@ void send_lavagna(int sock ,lavagna_t *lavagna)
 uint8_t eval_status()
 {
     // Ordine locking: prima status, poi connessioni, poi lavagna
-
     // Se lo stato è già questo, c'è già una avaliable card che sta essendo processata
     pthread_mutex_lock(&status.m);
     if(status.status == INSTR_AVAL_CARD)
@@ -215,13 +214,15 @@ void* serv_client(void* cl_info)
     }
     unsigned char instr_to_client[2]; // messaggio di istruzioni da mandare al client
     unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
+    int sent = 0; // variabile che indica se ho già mandato la card e le info in caso di ciclo p2p
     for(;;)
     {
         instr_to_client[0] = eval_status(); 
         if(instr_to_client[0] == INSTR_AVAL_CARD)
         {
-            if(connessione->to_send != NULL)
+            if(!sent)
             {
+                sent = 1;
                 // TODO concorrenza
                 // manda robe
                 instr_to_client[1] = status.total - 1;
@@ -253,40 +254,44 @@ void* serv_client(void* cl_info)
                 // A questo punto aspetto da ogni client la risposta, che dovrebbe essere 
                 // il numero di porta del client che si "aggiudica" la task
                 get_msg(connessione->socket, instr_from_client, 2);
-                uint16_t task_buddy;
-                memcpy((void*)&task_buddy, instr_from_client, 2);
-                task_buddy = htons(task_buddy); 
-                fprintf(stderr, "[dbg] serv_client: La task va a: %u\n", task_buddy);
+                uint16_t winner;
+                memcpy((void*)&winner, instr_from_client, 2);
+                winner = htons(winner); 
+                fprintf(stderr, "[dbg] serv_client: La task va a: %u\n", winner);
 
-                // inserisco la card del vincitore nella lavagna
-                pthread_rwlock_wrlock(&m_lavagna);
-                lavagna_t* contended = extract_from_lavagna(&lavagna, lavagna->card.id);
-                contended->card.colonna = DOING_COL;
-                contended->card.utente = task_buddy;
-                insert_lavagna_elem(&lavagna, contended);
-                pthread_rwlock_unlock(&m_lavagna);
-                
-                // A questo punto devo disfare le cose di status
-                // ordine lock: status, connessioni, lavagna
+                // se sono l'ultimo, inserisco la card del vincitore nella lavagna
+                // e poi "ripulisco" status 
                 pthread_mutex_lock(&status.m);
-                if(status.total != 0)
+                if(++status.winner_arrived == status.total)
                 {
-                    status.total = 0;
-                    status.sent = 0;
-                    pthread_mutex_lock(&lista_connessioni.m);
-                    connection_l_e *p = lista_connessioni.head;
-                    while(p)
+                    pthread_rwlock_wrlock(&m_lavagna);
+                    fprintf(stderr, "[dbg] serv_client: preso lock lavagna, setto effettivamente winner: %d\n", winner);
+                    lavagna_t* contended = extract_from_lavagna(&lavagna, lavagna->card.id);
+                    contended->card.colonna = DOING_COL;
+                    contended->card.utente = winner;
+                    insert_lavagna_elem(&lavagna, contended);
+                    pthread_rwlock_unlock(&m_lavagna);
+                    
+                    // A questo punto devo disfare le cose di status
+                    // ordine lock: status, connessioni, lavagna
+                    if(status.total != 0)
                     {
-                        if(p->to_send)
-                            p->to_send = NULL;
-                        p = p->next;
+                        status.winner_arrived = 0;
+                        status.total = 0;
+                        status.sent = 0;
+                        pthread_mutex_lock(&lista_connessioni.m);
+                        connection_l_e *p = lista_connessioni.head;
+                        while(p)
+                        {
+                            if(p->to_send)
+                                p->to_send = NULL;
+                            p = p->next;
+                        }
+                        pthread_mutex_unlock(&lista_connessioni.m);
+                        status.status = INSTR_NOP;
                     }
-                    pthread_mutex_unlock(&lista_connessioni.m);
-                    status.status = INSTR_NOP;
                 }
                 pthread_mutex_unlock(&status.m);
-
-                sleep(1);  // scritta per ora in quanto questo branch equivalente a instr_nop
                 continue;
             }
             else // se il thread ha già mandato, aspetta

@@ -25,6 +25,7 @@ extern pthread_mutex_t created_m;
 // ogni volta che la vuole vedere chiede alla lavagna le card attuali e le aggiorna
 extern lavagna_t* lavagna;
 
+extern int listener;
 // Funzione del thread che gestisce il prompt. 
 // Inserisce comandi nella cmd_queue, in modo che 
 // il main thread li possa eseguire, se hanno bisogno di comunicare con la lavagna

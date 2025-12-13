@@ -129,7 +129,7 @@ void show_card(task_card_t *cc)
     strftime(buf, 21, "%D %H:%m:%S", lastmod);
     printf("Id card: \t%u\n", cc->id);
     printf("Id utente: \n\t"); 
-    (cc->utente) ? printf("%u\n", cc->utente) : printf("card non ancora assegnata\n");
+    (cc->utente >= 1024) ? printf("%u\n", cc->utente) : printf("card non ancora assegnata\n");
     printf("Ultima modifica: \n\t%s\n", buf);
     printf("Descrizione card:\n\t%s\n", cc->desc);
 }

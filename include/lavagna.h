@@ -17,10 +17,12 @@ struct server_status{
     uint8_t status; 
     pthread_mutex_t m;
     pthread_cond_t cv;
-    uint8_t sent; // indica il numero di utenti a cui è stata già mandata la card (valido se 
-                  // c'è una card da mandare e abbastanza utenti)
+    uint8_t sent;  // indica il numero di utenti a cui è stata già mandata la card (valido se 
+                   // c'è una card da mandare e abbastanza utenti)
     uint8_t total; // indica il numero di utenti collegati alla lavagna nel momento
                    // in cui una card viene "etichettata come tosend"
+    uint8_t winner_arrived; // variabile che indica, nel caso in cui gli utenti siano in fase p2p, quanti
+                            // di questi abbiano mandato il vincitore
 };
 
 // Variabili globali

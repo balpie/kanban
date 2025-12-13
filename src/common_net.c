@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "../include/common_net.h"
 
+#define MAX_QUEUE 10
+
 // Usando il preprocessore funziona sia per macchine che
 // adottano little endian che per macchine che adottano 
 // big endian, ammesso che usino gcc
@@ -56,6 +58,33 @@ int send_msg(int sock, void* msg, size_t size)
     } while(sent < size);
     return 1;
 }
+
+// ritorna il socket listener o -1 al fallimento
+int init_listener(struct sockaddr_in* server_addr, uint16_t port)
+{
+    int listener = socket(AF_INET, SOCK_STREAM, 0);
+    if(listener < 0)
+    {
+        return -1;
+    }
+    memset(server_addr, 0, sizeof(struct sockaddr_in));
+    server_addr->sin_addr.s_addr = INADDR_ANY;
+    server_addr->sin_family = AF_INET;
+    server_addr->sin_port = htons(port);
+    fprintf(stderr, "[dbg] init_listener: inizializzo listener con porta: %d\n", port);
+    if(bind(listener, (struct sockaddr*)server_addr, sizeof(*server_addr)) < 0)
+    {
+        perror("[init_listener] errore bind");
+        exit(-1);
+    }
+    if(listen(listener, MAX_QUEUE) < 0)
+    {
+        perror("[init_listener] errore listen");
+        exit(-1);
+    }
+    return listener;
+}
+
 
 // riceve messaggio dal socket (argomento 1) un messaggio di dimensione (argomento 2)
 // TODO loop per caso recived < size

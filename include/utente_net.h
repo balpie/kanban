@@ -6,10 +6,12 @@
 #define IP_LAVAGNA "127.0.0.1"
 #define PORTA_LAVAGNA 5678  
 
+// Protocollo P2P kanban
 // I peer si ascolteranno dalla peer list in ordine di port.
 // Il primo peer a comunicare deve essere quello con la port più bassa tra tutti, e così via.
 // TODO: mancata trasmissione da parte di un peer
 struct peer_list_element{
+    int sock;
     uint32_t addr;
     uint16_t port;
     struct peer_list_element *next;
@@ -28,5 +30,20 @@ void deallocate_list(peer_list**);
 
 // stampa i peer nella lista (debug)
 void print_peers(peer_list*);
+
+// inizializza i socket: 
+int init_sockets(peer_list*);
+
+// la seguente funzione, in base al protocollo kanban, ascolta sulla propria porta, 
+// o comunica alla porta di tutti il proprio costo. l'argomento passato è il peer
+// con numero di porta più basso all'interno della propria lista, che non ha ancora avuto
+// il turno. 
+// arg1: socket
+// arg2: primo elemento lista peer
+// arg3: elemento corrente lista peer
+// arg4: numero di porta dell'utente
+// arg5: dopo la funzione punterà a intero senza segno (che deve essere già allocato)
+//       che è il peer con costo minimo fino ad adesso
+unsigned kanban_p2p_iteration(int, peer_list* ,peer_list*, uint16_t, uint16_t*);
 
 #endif

@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <time.h>
 
 lavagna_t *lavagna = NULL;
 // coda circolare dei comandi
@@ -19,6 +20,7 @@ task_card_t *created = NULL;
 pthread_mutex_t created_m;
 int cmd_head = 0;
 int cmd_tail = 0;
+int listener;
 
 void err_args(char* prg)
 {
@@ -30,6 +32,7 @@ void err_args(char* prg)
 
 int main(int argc, char* argv[])
 {
+    srand(time(NULL));
     memset(cmd_queue, 0, MAX_QUEUE_CMD);
     short unsigned user_port;
     pthread_mutex_init(&created_m, NULL);
@@ -61,6 +64,10 @@ int main(int argc, char* argv[])
     int server_sock = registra_utente(user_port);
     int self_info[2] = {user_port, server_sock};
 
+    struct sockaddr_in listener_addr;
+    int listener = init_listener(&listener_addr, user_port); // listener socket per interazione p2p
+
+
     pthread_create(&prompt_cycle, NULL, prompt_cycle_function, self_info);
     pthread_detach(prompt_cycle);
         
@@ -90,7 +97,13 @@ int main(int argc, char* argv[])
                     fprintf(stderr, "[dbg] main: errore ricezione peer\n");
                 }
             }
-            print_peers(peers);
+            // aggiungo la porta di questo processo questo semplifica l'"iterazione" p2p
+            peer_list *pp = (peer_list*)malloc(sizeof(peer_list));
+            pp->port = user_port;
+            pp->addr = 0; 
+            pp->next = NULL;
+            insert_peer(&peers, pp);
+
             // richiedo la dimensione della card
             get_msg(server_sock, instr_from_server, 2);
             fprintf(stderr, "[dbg] main, card arriva di dimensione %u\n", instr_from_server[1]);
@@ -107,10 +120,18 @@ int main(int argc, char* argv[])
             get_msg(server_sock, instr_from_server, 2);
 
             // p2p()...
-            uint16_t winner = 7;
+            // funzione di utilità per fine di testing e debug
+
+            print_peers(peers);
+            uint16_t winner = NO_USR;
+            peer_list *p = peers;
+            while(kanban_p2p_iteration(listener, peers, p, user_port, &winner))
+            {
+                p = p->next;
+            }
+            fprintf(stderr, "[dbg] mando porta vincitore, tale: %u\n", winner);
+            winner = htons(winner);
             send_msg(server_sock, (void*)&winner, 2);
-            // provvisoriamente assumo che il vincitore sia un utente
-            // immaginario con porta id 7
             continue;
         }
         char c;
@@ -187,5 +208,6 @@ int main(int argc, char* argv[])
                 break;
         }
     }
+    close(listener);
     return 0;
 }

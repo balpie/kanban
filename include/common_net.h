@@ -40,7 +40,7 @@ uint64_t ntohll(uint64_t num);
 
 // funzione che inizializza socket listener
 // ritorna il socket listener o -1 al fallimento
-int init_listener(struct sockaddr_in*);
+int init_listener(struct sockaddr_in*, uint16_t);
 
 // manda size byte di msg via sock
 // ritorna 1 se eseguita con successo 0 altrimenti
