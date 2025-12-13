@@ -15,6 +15,7 @@
 #define CMD_STR_QUIT "QUIT"
 #define CMD_STR_STAMPA_UTENTI_CONNESSI "SEE_CONNECTED"
 #define CMD_STR_SHOW_LAVAGNA "SHOW_LAVAGNA"
+#define CMD_STR_CARD_DONE "CARD_DONE"
 // Lettere maiuscole: comandi validi per lavagna
 // Lettere minuscole: comandi validi per utente 
 // altri caratteri: comandi validi per entrambi
@@ -26,6 +27,7 @@
 #define CMD_STAMPA_UTENTI_CONNESSI 'S'
 // utente
 #define CMD_CREATE_CARD 'g'
+#define CMD_CARD_DONE 'd'
 
 // valore di porta considerato come nessun utente
 #define NO_USR 1023U
@@ -57,6 +59,7 @@ void show_lavagna(lavagna_t *l);
 
 // ordinata rispetto alla colonna
 void insert_into_lavagna(lavagna_t **l, task_card_t *card);
+
 
 // rimuove la task id dalla lavagna. Utile per riordinarla
 lavagna_t* extract_from_lavagna(lavagna_t **, uint8_t);

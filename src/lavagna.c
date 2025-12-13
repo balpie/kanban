@@ -352,6 +352,19 @@ void* serv_client(void* cl_info)
             // Ne client ne server hanno "da fare"
             sleep(1); 
             break;
+        case INSTR_CARD_DONE:
+            // TODO Finisci
+            pthread_rwlock_wrlock(&m_lavagna);
+            fprintf(stderr, "[dbg] se esiste, metto la card dell'utente in done");
+            lavagna_t* done_card = extract_from_lavagna(&lavagna, lavagna->card.id);
+            if(done_card)
+            {
+                fprintf(stderr, "[dbg] La card esisteva");
+                done_card->card.colonna = DONE_COL;
+                insert_lavagna_elem(&lavagna, done_card);
+            }
+            pthread_rwlock_unlock(&m_lavagna);
+
         }
     } 
     return NULL;

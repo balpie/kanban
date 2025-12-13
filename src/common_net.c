@@ -55,7 +55,7 @@ int send_msg(int sock, void* msg, size_t size)
             perror("\n>! Errore send");
             return 0;
         }
-    } while(sent < size);
+    }while(sent < size);
     return 1;
 }
 

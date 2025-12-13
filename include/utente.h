@@ -19,6 +19,8 @@ extern int cmd_tail;
 
 // Carta creata dal prompt thread
 extern task_card_t *created;
+// carta attualmente in doing. NULL se non presente
+extern lavagna_t *doing;
 extern pthread_mutex_t created_m;
 
 // lavagna corrente. L'utente assuma che non sia mai up to date: 

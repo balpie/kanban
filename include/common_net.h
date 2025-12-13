@@ -2,8 +2,11 @@
 #define COMMON_NET_H
 
 #define RTR_CONN_CLOSE 0
-// ho scelto newline perchè è un carattere che l'utente
-// non può inserire in descrizione
+
+// messaggi di ping e di pong sono 0 perchè non è ambiguo: 
+// ho fatto in modo che non sia possibile mandare un byte 0
+// TODO: non è vero. campi indirizzo e porta possono avere al loro interno byte 0
+
 #define PING_PONG_MSG (char)0
 
 // Definizioni macro che iniziano con INSTR relative a "comandi"  inviati dal
@@ -18,7 +21,6 @@
                                 // l'interazione di tipo p2p, in quanto hanno tutti ricevuto e acked 
                                 // le loro cose
 
-
 // ISTRUZIONI DAL CLIENT
 #define INSTR_NEW_CARD '6' // il successivo byte ricevuto è la dimensione della card che verrà 
                            // inviata successivamente dall'utente
@@ -26,6 +28,8 @@
 #define INSTR_SHOW_LAVAGNA '7' // indica una richiesta da parte dell'utente di mandare
                                // tutte le card della lavagna
 #define INSTR_ACK_PEERS '8'
+#define INSTR_CARD_DONE '9'
+
 #define LAVAGNA_PORT 5678
 #define LAVAGNA_ADDR "127.0.0.1"
 

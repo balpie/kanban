@@ -17,6 +17,7 @@ lavagna_t *lavagna = NULL;
 // TODO NON E VERO PERCHE IL COMPILATORE PUO RIORDINARE 
 char cmd_queue[MAX_QUEUE_CMD];
 task_card_t *created = NULL;
+lavagna_t *doing = NULL;
 pthread_mutex_t created_m;
 int cmd_head = 0;
 int cmd_tail = 0;
@@ -130,8 +131,16 @@ int main(int argc, char* argv[])
                 p = p->next;
             }
             fprintf(stderr, "[dbg] mando porta vincitore, tale: %u\n", winner);
-            winner = htons(winner);
-            send_msg(server_sock, (void*)&winner, 2);
+            uint16_t network_winner = htons(winner);
+
+            fprintf(stderr, "[dbg] user_port %u\twinner %u\n", user_port ,winner);
+            if(winner == user_port)
+            {
+                printf(">> Ho proposto il costo minore, quindi mi prendo la card\n");
+                insert_into_lavagna(&doing, contended_card);
+            }
+            free(contended_card);
+            send_msg(server_sock, (void*)&network_winner, 2);
             continue;
         }
         char c;
@@ -206,8 +215,22 @@ int main(int argc, char* argv[])
                 libera_lavagna(lavagna);
                 lavagna = NULL;
                 break;
+            case CMD_CARD_DONE:
+                // Per ora l'utente può finire le task con ordine LIFO
+                if(!doing)
+                {
+                    printf(">! nessuna carta in doing, comando equivalente a NOP\n");
+                    break;
+                }
+                instr_to_server[0] = INSTR_CARD_DONE;
+                instr_to_server[1] = doing->card.id; 
+                fprintf(stderr, "[dbg] Estraggo dalla lavagna\n");
+                extract_from_lavagna(&doing, doing->card.id); // estrazione in testa
+                send_msg(server_sock, instr_to_server, 2);
+                break;
         }
     }
     close(listener);
     return 0;
 }
+

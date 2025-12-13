@@ -9,14 +9,16 @@ const char *CMD_STR_ARR[] = {
     CMD_STR_CREATE_CARD,
     CMD_STR_QUIT,
     CMD_STR_STAMPA_UTENTI_CONNESSI,
-    CMD_STR_SHOW_LAVAGNA
+    CMD_STR_SHOW_LAVAGNA,
+    CMD_STR_CARD_DONE
 };
 
 const char CMD_ARR[] = {
     CMD_CREATE_CARD,
     CMD_QUIT,
     CMD_STAMPA_UTENTI_CONNESSI,
-    CMD_SHOW_LAVAGNA
+    CMD_SHOW_LAVAGNA,
+    CMD_CARD_DONE
 };
 
 void show_lavagna(lavagna_t *l)
@@ -57,7 +59,7 @@ void copia_card(task_card_t *src, task_card_t *dest)
     dest->colonna = src->colonna;
     dest->utente = src->utente;
     dest->last_modified = src->last_modified;
-    dest->desc = src->desc;
+    dest->desc = src->desc; // la descrizione è allocata dinamicamente
 }
 
 // Inserimento ordinato rispetto alla colonna all'interno della lavagna
@@ -87,6 +89,7 @@ void insert_into_lavagna(lavagna_t **l, task_card_t *card)
     prec->next = new;
     new->next = iter;
 }
+
 
 lavagna_t* extract_from_lavagna(lavagna_t **l, uint8_t id)
 {
