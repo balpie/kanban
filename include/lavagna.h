@@ -4,6 +4,9 @@
 
 #define LOGFILE_NAME ".log/log_lav"
 
+#define TIME_PING 90U
+#define TIME_PONG_MAX_DELAY 30U
+
 // Massimo 100 processi client serviti contemporaneamente
 #define MAX_SERVER_PROCS 100
 

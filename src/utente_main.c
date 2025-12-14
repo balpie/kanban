@@ -143,13 +143,19 @@ int main(int argc, char* argv[])
             send_msg(server_sock, (void*)&network_winner, 2);
             continue;
         }
+        if(instr_from_server[0] == INSTR_PING)
+        { // se mi arriva ping mando pong // TODO test
+            instr_to_server[0] = INSTR_PING;
+            send_msg(server_sock, instr_to_server, 2);
+            continue;
+        }
         char c;
         if(cmd_tail == cmd_head) // caso in cui non ho comandi da eseguire
         {
             instr_to_server[0] = INSTR_NOP;
             send_msg(server_sock, instr_to_server, 2); // comunico al server che anche il client
                                                        // non ha nulla da fare
-            sleep(1);
+            sleep(1); // TODO setsockopt SO_RECVTIMEOUT
             continue;
         }
         c = cmd_queue[cmd_tail];

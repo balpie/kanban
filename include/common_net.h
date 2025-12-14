@@ -20,6 +20,7 @@
 #define INSTR_CLIENTS_READY '5' // server comunica ai client che sono pronti per far partire
                                 // l'interazione di tipo p2p, in quanto hanno tutti ricevuto e acked 
                                 // le loro cose
+#define INSTR_PING '@'
 
 // ISTRUZIONI DAL CLIENT
 #define INSTR_NEW_CARD '6' // il successivo byte ricevuto è la dimensione della card che verrà 
