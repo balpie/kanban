@@ -222,6 +222,7 @@ void send_p2p_info(connection_l_e *connessione)
     status.sent++;
 
     pthread_mutex_lock(&status.m);
+    fprintf(stderr, "[dbg] send_p2p_info: total %u\tsent %u\n", status.total, status.sent);
     while(status.total != status.sent)
     {
         pthread_cond_wait(&status.cv, &status.m);
@@ -362,17 +363,21 @@ void* serv_client(void* cl_info)
             fprintf(stderr, "[dbg]serv_client(%u): mando ping\n", connessione->port_id);
             get_msg(connessione->socket, instr_from_client, 2);
             time_t elapsed = time(NULL) - ping_sent; // tempo impiegato dall'utente a rispondermi
-            fprintf(stderr, "[dbg]serv_client(%u): tempo impiegato dall client a rispondermi al ping %lu\n", connessione->port_id, elapsed);
+            fprintf(stderr, "[dbg]serv_client(%u): tempo impiegato dall client a rispondermi al ping %lu\n",
+                    connessione->port_id, elapsed);
             if(elapsed > TIME_PONG_MAX_DELAY)
             { 
                 // disconnetto il client, tolgo carte in doing, e le metto in todo
-                fprintf(stderr, "[dbg]serv_client(%u) : %u non ha mandato il pong in tempo", connessione->port_id, connessione->port_id);
+                fprintf(stderr, "[dbg]serv_client(%u) : %u non ha mandato il pong in tempo",
+                        connessione->port_id, connessione->port_id);
                 int card_id;
                 // finchè ci sono card in doing per l'utente...
                 pthread_rwlock_wrlock(&m_lavagna);
+                // TODO fai rimozione card in doing in rimuovi connessione
                 while((card_id = get_doing_card_id(connessione->port_id)) != -1)
                 {
-                    fprintf(stderr, "[dbg]serv_client(%u) : sposto card %d in todo\n", connessione->port_id, card_id);
+                    fprintf(stderr, "[dbg]serv_client(%u) : sposto card %d in todo\n",
+                            connessione->port_id, card_id);
                     lavagna_t *cc = extract_from_lavagna(&lavagna, (uint8_t)card_id);
                     if(cc) // non dovrebbe servire 
                     {

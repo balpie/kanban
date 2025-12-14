@@ -47,6 +47,7 @@ int main(int argc, char* argv[])
     {
         err_args(argv[0]);
     } 
+    sprintf(prompt_msg, "utente%u", user_port);
     if(argc != 3 || strcmp(argv[2], "-d"))// se gli argomenti non sono esattamente 2, e il secondo non è -d
     {
         // TODO error check
@@ -125,9 +126,11 @@ int main(int argc, char* argv[])
 
             // Mando ack per dire al server che ho ricevuto card e peers
             instr_to_server[0] = instr_to_server[1] = INSTR_ACK_PEERS; 
+            fprintf(stderr, "[dbg] mando ack al server\n");
             send_msg(server_sock, instr_to_server, 2);
 
             // Aspetto che tutti i client siano pronti
+            fprintf(stderr, "[dbg] Aspetto che tutti i client siano pronti\n");
             get_msg(server_sock, instr_from_server, 2);
 
             // p2p()...
@@ -158,6 +161,7 @@ int main(int argc, char* argv[])
         if(instr_from_server[0] == INSTR_PING)
         { // se mi arriva ping mando pong // TODO test
             instr_to_server[0] = INSTR_PING;
+            fprintf(stderr, "[dbg] main: mando pong a lavagna\n");
             send_msg(server_sock, instr_to_server, 2);
             continue;
         }

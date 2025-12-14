@@ -23,10 +23,19 @@ int main(int argc, char *argv[]) // main thread: listener
     // scrivo i commmenti in un log file
     if(argc < 2 || strcmp(argv[1], "-d")) 
     {
-        // TODO error check
         int logfile = open(LOGFILE_NAME, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        dup2(logfile, STDERR_FILENO); // associo stderr al logfile
-        close(logfile);
+        if(logfile < 0)
+        {
+            printf(">! errore open logfile%s\n", LOGFILE_NAME);
+        }
+        if(dup2(logfile, STDERR_FILENO) < 0) // associo stderr al logfile
+        {
+            printf(">! errore ridirezione stderr\n");
+        }
+        if(close(logfile) < 0)
+        {
+            printf(">! errore close\n");
+        }
         fflush(stderr);
     }
     pthread_mutex_init(&status.m, NULL);

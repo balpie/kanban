@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 
+char prompt_msg[12];
+
 void clear_stdin_buffer()
 {
     char c;
@@ -157,7 +159,7 @@ void *prompt_cycle_function(void* self_info)
     char c;
     for(;;)
     {
-        c = prompt_line("utente");
+        c = prompt_line(prompt_msg);
         if((cmd_head + 1) % MAX_QUEUE_CMD == cmd_tail)
         {
             // caso coda piena

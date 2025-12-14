@@ -2,7 +2,7 @@
 #define LAVAGNA_H
 #include "lavagna_net.h"
 
-#define LOGFILE_NAME ".log/log_lav"
+#define LOGFILE_NAME "log/log_lav"
 
 #define TIME_PING 90U
 #define TIME_PONG_MAX_DELAY 30U

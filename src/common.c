@@ -127,9 +127,9 @@ void libera_lavagna(lavagna_t* ll)
 
 void show_card(task_card_t *cc)
 {
-    char buf[21];
+    char buf[9];
     struct tm *lastmod = localtime(&cc->last_modified);
-    strftime(buf, 21, "%D %H:%m:%S", lastmod);
+    strftime(buf, 9, "%H:%M:%S", lastmod);
     printf("Id card: \t%u\n", cc->id);
     printf("Id utente: \n\t"); 
     (cc->utente >= 1024) ? printf("%u\n", cc->utente) : printf("card non ancora assegnata\n");

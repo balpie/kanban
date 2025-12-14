@@ -23,6 +23,8 @@ extern task_card_t *created;
 extern lavagna_t *doing;
 extern pthread_mutex_t created_m;
 
+extern char prompt_msg[12];
+
 // lavagna corrente. L'utente assuma che non sia mai up to date: 
 // ogni volta che la vuole vedere chiede alla lavagna le card attuali e le aggiorna
 extern lavagna_t* lavagna;
