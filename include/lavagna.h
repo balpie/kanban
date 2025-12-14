@@ -4,8 +4,11 @@
 
 #define LOGFILE_NAME "log/log_lav"
 
-#define TIME_PING 90U
-#define TIME_PONG_MAX_DELAY 30U
+// Tempi in secondi
+// attesa tra una richiesta di ping e un altra
+#define TIME_PING 5U
+// Massimo delay pong
+#define TIME_PONG_MAX_DELAY 1U
 
 #define MAX_SERVER_PROCS 256
 

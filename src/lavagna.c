@@ -71,7 +71,13 @@ connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checkin
     uint16_t port; // port_id
     // il primo messaggio che ogni client deve mandare è la propria porta
     // identificativa, che gli permette di parlare con gli altri
-    get_msg(socket, (void*)&port, 2); 
+    
+    if(!get_msg(socket, (void*)&port, 2))
+    {
+        // non ho ancora creato la connessione quindi 
+        close(socket);
+        return NULL;
+    }
     pthread_mutex_lock(&lista_connessioni.m);
     if(get_connection(ntohs(port))) // se c'è già un utente con tale id
     {
@@ -169,6 +175,7 @@ uint8_t eval_status(time_t aquired)
     return status.status; // lo status rimane il solito (che sia users_choosing o instr_nop)
 }
 
+
 // come insert_into_lavagna ma inserisce direttamente un elemento e non ne alloca uno nuovo
 void insert_lavagna_elem(lavagna_t** lp, lavagna_t*elem)
 {
@@ -195,6 +202,48 @@ void insert_lavagna_elem(lavagna_t** lp, lavagna_t*elem)
     elem->next = iter;
 }
 
+// disconnette l'utente della connessione, gestendo sue eventuali card 
+void disconnect_user(connection_l_e* connessione)
+{
+    uint16_t port_id = connessione->port_id;
+    pthread_mutex_lock(&lista_connessioni.m);
+    remove_connection(&(lista_connessioni.head), connessione->socket);
+    pthread_mutex_unlock(&lista_connessioni.m);
+
+    pthread_mutex_lock(&status.m);
+    status.n_connessioni--;
+    pthread_mutex_unlock(&status.m);
+
+    pthread_rwlock_wrlock(&m_lavagna);
+    lavagna_t *pl = lavagna;
+    while(pl)
+    {
+        if(pl->card.utente == port_id)
+        {
+            switch(pl->card.colonna)
+            {
+
+                case DOING_COL:
+                    lavagna_t *cc = extract_from_lavagna(&lavagna, (uint8_t)pl->card.id);
+                    if(cc) // non dovrebbe servire 
+                    {
+                        cc->card.colonna = TODO_COL;
+                        cc->card.utente = NO_USR;
+                        insert_lavagna_elem(&lavagna, cc);
+                    }
+                    break;
+                case TODO_COL:
+                case DONE_COL:
+                    pl->card.utente = NO_USR;
+            }
+        }
+        pl = pl->next;
+    }
+    pthread_rwlock_unlock(&m_lavagna);
+
+    pthread_exit(NULL); // connessione terminata, termino thread
+}
+
 // funzione che manda al client le informazioni necessarie alla comunicazione p2p
 void send_p2p_info(connection_l_e *connessione)
  {
@@ -216,7 +265,12 @@ void send_p2p_info(connection_l_e *connessione)
     // aspetto su conditional variable di stato che tutti i thread abbiano mandato 
     // card e connessioni al proprio utente
     fprintf(stderr, "[dbg] send_p2p_info: ricevo ack\n");
-    get_msg(connessione->socket, instr_from_client, 2); 
+    if(!get_msg(connessione->socket, instr_from_client, 2)) // if !get_msg then disconnect_user(connessione)
+    {
+        // visto che il thread è della connessione, la funzione sotto termina il thread
+        disconnect_user(connessione);
+    }
+
     // assumo sia un ack perchè non mi può mandare altro
     // Ora che so che il mio client ha ricevuto card e cose 
     status.sent++;
@@ -241,7 +295,10 @@ void send_p2p_info(connection_l_e *connessione)
 uint16_t recv_p2p_result(connection_l_e* connessione)
 {
     unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
-    get_msg(connessione->socket, instr_from_client, 2);
+    if (!get_msg(connessione->socket, instr_from_client, 2)) // if !get_msg then disconnect_user(connessione)
+    {
+        disconnect_user(connessione);
+    }
     uint16_t winner;
     memcpy((void*)&winner, instr_from_client, 2);
     winner = ntohs(winner); 
@@ -303,9 +360,9 @@ void* serv_client(void* cl_info)
     // variabile che punta alla connessione servita da questo thread
     connection_l_e* connessione = registra_client(cl_in->socket, cl_in->addr); 
     free(cl_in);
-    if(!connessione) // caso più di un utente con la stessa porta
+    if(!connessione) // caso più di un utente con la stessa porta o utente disconnesso
     {
-        return NULL;
+        pthread_exit(NULL);
     }
     unsigned char instr_to_client[2]; // messaggio di istruzioni da mandare al client
     unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
@@ -350,9 +407,9 @@ void* serv_client(void* cl_info)
                 fprintf(stderr, "[dbg]serv_client(%u) rimetto sent a 0\n", connessione->port_id);
                 continue;
             }
-            else // se il thread ha già mandato, aspetta
+            else // se il thread ha già mandato, aspetta mezzo secondo
             {
-                sleep(1); 
+                usleep(500000); 
                 continue;
             }
         }
@@ -361,7 +418,11 @@ void* serv_client(void* cl_info)
             send_msg(connessione->socket, instr_to_client, 2);
             time_t ping_sent = time(NULL);
             fprintf(stderr, "[dbg]serv_client(%u): mando ping\n", connessione->port_id);
-            get_msg(connessione->socket, instr_from_client, 2);
+            if(!get_msg(connessione->socket, instr_from_client, 2))
+            {
+                disconnect_user(connessione); // if !get_msg then disconnect_user(connessione)
+            }
+
             time_t elapsed = time(NULL) - ping_sent; // tempo impiegato dall'utente a rispondermi
             fprintf(stderr, "[dbg]serv_client(%u): tempo impiegato dall client a rispondermi al ping %lu\n",
                     connessione->port_id, elapsed);
@@ -402,17 +463,17 @@ void* serv_client(void* cl_info)
             aquired = time(NULL); 
             continue;
         }
-        send_msg(connessione->socket, instr_to_client, 2);
+        if(instr_to_client[0] != INSTR_NOP)
+            send_msg(connessione->socket, instr_to_client, 2);
             // passo al client la possibilità di decidere che fare  
-        if(!get_msg(connessione->socket, instr_from_client, 2)) 
+        int msg_width = get_msg(connessione->socket, instr_from_client, 2);
+        if(!msg_width) 
         { // caso connessione chiusa
-            pthread_mutex_lock(&lista_connessioni.m);
-            remove_connection(&(lista_connessioni.head), connessione->socket);
-            pthread_mutex_unlock(&lista_connessioni.m);
-            pthread_mutex_lock(&status.m);
-            status.n_connessioni--;
-            pthread_mutex_unlock(&status.m);
-            pthread_exit(NULL); // connessione terminata, termino thread
+            disconnect_user(connessione);
+        }
+        if(msg_width < 0) // caso INSTR_NOP arrivato dal client
+        {
+            continue;
         }
         switch(instr_from_client[0]) // in base a cosa vuole fare il client lo servo...
         {
@@ -456,11 +517,11 @@ void* serv_client(void* cl_info)
         case INSTR_CARD_DONE:
             // TODO Finisci
             pthread_rwlock_wrlock(&m_lavagna);
-            fprintf(stderr, "[dbg] se esiste, metto la card dell'utente in done");
+            fprintf(stderr, "[dbg] se esiste, metto la card dell'utente in done\n");
             lavagna_t* done_card = extract_from_lavagna(&lavagna, lavagna->card.id);
             if(done_card)
             {
-                fprintf(stderr, "[dbg] La card esisteva");
+                fprintf(stderr, "[dbg] La card esisteva\n");
                 done_card->card.colonna = DONE_COL;
                 insert_lavagna_elem(&lavagna, done_card);
                 if(get_doing_card_id(connessione->port_id) == -1) // se l'utente non ha nessuna card in doing

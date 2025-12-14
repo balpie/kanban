@@ -23,6 +23,11 @@ int cmd_head = 0;
 int cmd_tail = 0;
 int listener;
 
+struct timeval timeout_recv = {
+    .tv_sec = 1,
+    .tv_usec = 0
+};      
+
 void err_args(char* prg)
 {
         printf(">! utilizzo: %s <porta> [-d]\n", prg);
@@ -65,6 +70,9 @@ int main(int argc, char* argv[])
     }
     printf(">> Registrazione al server con porta %u...\n", user_port);
     int server_sock = registra_utente(user_port);
+    fprintf(stderr, "[dbg] do al socket timeout 1s in send\n");
+    if (setsockopt (server_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_recv, sizeof(timeout_recv)) < 0)
+        fprintf(stderr, "[err]errore setsockopt\n");
     int self_info[2] = {user_port, server_sock};
 
     struct sockaddr_in listener_addr;
@@ -161,7 +169,9 @@ int main(int argc, char* argv[])
         if(instr_from_server[0] == INSTR_PING)
         { // se mi arriva ping mando pong // TODO test
             instr_to_server[0] = INSTR_PING;
-            fprintf(stderr, "[dbg] main: mando pong a lavagna\n");
+            //FIXME fprintf(stderr, "[dbg] main: mando pong a lavagna\n");
+            fprintf(stderr, "[tst] Faccio arrivare apposta in ritardo il pong\n");
+            sleep(10); 
             send_msg(server_sock, instr_to_server, 2);
             continue;
         }

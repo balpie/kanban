@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "../include/common_net.h"
 
 #define MAX_QUEUE 10
@@ -101,21 +102,12 @@ int get_msg(int sock, void *buf, size_t size)
         }
         if(recived < 0)
         {
-            perror("\n>! Errore recv");
+            if(errno == EWOULDBLOCK)
+            {
+                // se l'errore è questo la controparte ha tardato a mandare il messaggio
+                return -1;
+            }
             return 0;
-        }
-        // gestisci caso ping/pong, da valutare sia se ne arrivano
-        // meno di quanto mi aspettassi, che se ne mancavano esattamente 2
-        if(recived < size)  // gestisci caso recived == 2 == size ma è ping-pong
-        {
-#ifdef IS_LAVAGNA
-            fprintf(stderr, "[dbg] Sono la lavagna!\n");
-            // aggiorna info ping-pong
-#else 
-            fprintf(stderr, "[dbg] Sono utente!\n");
-            // manda pong
-            // ricevi nuovo messaggio, che dovrebbe essere quello expected
-#endif
         }
     }while (recived < size);
     return 1;
