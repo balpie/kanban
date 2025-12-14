@@ -12,10 +12,6 @@ connection_l lista_connessioni;
 
 int sock_listener; // in modo da poter terminare dai thread
 struct server_status status; 
-                             
-                             
-                             
-                             
 
 lavagna_t *lavagna = NULL; 
 pthread_rwlock_t m_lavagna;
@@ -37,6 +33,7 @@ int main(int argc, char *argv[]) // main thread: listener
     pthread_rwlock_init(&m_lavagna, NULL);
     status.n_connessioni = 0;
     status.winner_arrived = 0;
+    status.status = INSTR_NOP;
     struct sockaddr_in listener_addr;
     struct sockaddr_in new_connection;
     sock_listener = init_listener(&listener_addr, LAVAGNA_PORT);
@@ -64,10 +61,10 @@ int main(int argc, char *argv[]) // main thread: listener
             pthread_detach(server_processes);
         }
         else 
-        {// se ho tutti i thread occupati aspetto che uno si liberi.
+        { // aspetto che qualcuno si disconnetta prima di accettare una nuova conessione
             sleep(1);
         }
-        fprintf(stderr, "[dbg] listener: numero connessioni: %d\n", status.n_connessioni);
+        fprintf(stderr, "[dbg] listener: numero connessioni %d\n", status.n_connessioni + 1);
     }
     return 0;
 }

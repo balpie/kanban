@@ -188,6 +188,10 @@ char prompt_line(char* content)
     printf("%s> ", content);
     if(!fgets(cmdbuf, MAX_CMD_SIZE, stdin)) // caso ctrl-d o errore
     {
+        fprintf(stderr, "\n[dbg] COMMON(prompt_line): fgets ha ritornato 0, fileno(stdin): %d\n errore:\n",
+                fileno(stdin));
+        if(ferror(stdin))
+            perror(NULL);
         printf("\n");
         return CMD_QUIT;
     }

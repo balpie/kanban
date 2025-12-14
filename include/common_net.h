@@ -7,8 +7,6 @@
 // ho fatto in modo che non sia possibile mandare un byte 0
 // TODO: non è vero. campi indirizzo e porta possono avere al loro interno byte 0
 
-#define PING_PONG_MSG (char)0
-
 // Definizioni macro che iniziano con INSTR relative a "comandi"  inviati dal
 // client al server o viceversa 
 #define INSTR_NOP '0' // no card disponibili in todo, quindi l'utente non ha nulla da fa

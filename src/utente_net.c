@@ -44,8 +44,9 @@ void deallocate_list(peer_list** pl)
     {
         peer_list* tmp = *pl;
         pl = &((*pl)->next);
-        if(tmp->sock != -1)
+        if(tmp->sock >= 0)
         {
+            fprintf(stderr, "[dbg] sto chiudendo fd %d\n", tmp->sock);
             close(tmp->sock);
         }
         free(tmp);

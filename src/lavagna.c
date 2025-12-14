@@ -125,6 +125,7 @@ uint8_t eval_status(time_t aquired)
 {
     // Ordine locking: prima status, poi connessioni, poi lavagna
     // Se lo stato è già questo, c'è già una avaliable card che sta essendo processata
+    //fprintf(stderr, "[dbg] eval_status\n\taquired %lu\n\telapsed %lu\n\t", aquired, time(NULL) - aquired);
     if(aquired && (time(NULL) - aquired > TIME_PING))
     {
         return INSTR_PING;
@@ -132,6 +133,7 @@ uint8_t eval_status(time_t aquired)
     pthread_mutex_lock(&status.m);
     if(status.status == INSTR_AVAL_CARD)
     {
+        //fprintf(stderr, "[dbg] eval_status: status era INSTR_AVAL_CARD e rimane così\n");
         pthread_mutex_unlock(&status.m);
         return INSTR_AVAL_CARD;
     }
@@ -139,8 +141,10 @@ uint8_t eval_status(time_t aquired)
     // altrimenti si valuta se è presente una card assegnabile
     if(lavagna && lavagna->card.colonna == TODO_COL)
     {
+        //fprintf(stderr, "[dbg] eval_status: card presente in colonna todo\n");
         if(status.n_connessioni >= 2)
         {
+            //fprintf(stderr, "[dbg] eval_status: status.n_connessioni > 2 => imposto status per comunicazione p2p\n");
             // alle connessioni presenti auttualmente metto come
             // tosend la prima card di todo_list
             int count = 0;
@@ -161,6 +165,7 @@ uint8_t eval_status(time_t aquired)
     }
     pthread_mutex_unlock(&status.m);
     pthread_rwlock_unlock(&m_lavagna);
+    //fprintf(stderr, "[dbg] eval_status: status attuale %u\n", status.status);
     return status.status; // lo status rimane il solito (che sia users_choosing o instr_nop)
 }
 
@@ -200,13 +205,17 @@ void send_p2p_info(connection_l_e *connessione)
     // TODO concorrenza
     instr_to_client[1] = status.total - 1;
     // dico al client che una card è avaliable, e gli dico il numero di peer che avrà
+    fprintf(stderr, "[dbg] send_p2p_info: mando al client INSTR_AVAL_CARD | %u peers\n", instr_to_client[1]);
     send_msg(connessione->socket, instr_to_client, 2); 
     // mando la lista di tutti tranne se 
+    fprintf(stderr, "[dbg] send_p2p_info: mando %u connessioni\n", instr_to_client[1]);
     send_conn_list(connessione->socket, connessione, status.total - 1);
     // mando la card, che è la prima di lavagna
+    fprintf(stderr, "[dbg] send_p2p_info: mando la card\n");
     send_card(connessione->socket, &lavagna->card);
     // aspetto su conditional variable di stato che tutti i thread abbiano mandato 
     // card e connessioni al proprio utente
+    fprintf(stderr, "[dbg] send_p2p_info: ricevo ack\n");
     get_msg(connessione->socket, instr_from_client, 2); 
     // assumo sia un ack perchè non mi può mandare altro
     // Ora che so che il mio client ha ricevuto card e cose 
@@ -300,29 +309,44 @@ void* serv_client(void* cl_info)
     unsigned char instr_to_client[2]; // messaggio di istruzioni da mandare al client
     unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
     int sent = 0; // variabile che indica se ho già mandato la card e le info in caso di ciclo p2p
+    time_t aquired = 0;
+
+    unsigned char old_instr_to_client = INSTR_NOP;
+
     for(;;)
     {
         // istante in cui l'utente ha acquisito la card
-        time_t aquired = 0;
         instr_to_client[0] = eval_status(aquired); 
+        if(old_instr_to_client != instr_to_client[0])
+        {
+            if(old_instr_to_client == INSTR_AVAL_CARD)
+            {
+                // se è finito il ciclo di p2p rimetto sent a 0 per il prossimo
+                sent = 0;    
+            }
+            fprintf(stderr, "[dbg] serv_client(%u): cambio status, da %u a %u\n",
+                    connessione->port_id, old_instr_to_client, instr_to_client[0]);
+            old_instr_to_client = instr_to_client[0];
+        }
         if(instr_to_client[0] == INSTR_AVAL_CARD)
         {
             if(!sent)
             {
                 sent = 1;
                 // mando al client le informazioni che gli servono per l'asta
-                fprintf(stderr, "[dbg] parte funzione send_p2p_info\n");
+                fprintf(stderr, "[dbg]serv_client(%u) parte funzione send_p2p_info\n", connessione->port_id);
                 send_p2p_info(connessione);
                 // A questo punto aspetto da ogni client la risposta, che dovrebbe essere 
                 // il numero di porta del client che si "aggiudica" la task
                 // se sono l'ultimo, inserisco la card del vincitore nella lavagna
                 // e poi "ripulisco" status 
-                fprintf(stderr, "[dbg] parte funzione recv_p2p_result\n");
+                fprintf(stderr, "[dbg]serv_client(%u) parte funzione recv_p2p_result\n", connessione->port_id);
                 // ricevo risultati p2p, se la "il mio utente ha ricevuto la card allora faccio partire il conto"
                 if(recv_p2p_result(connessione) == connessione->port_id && !aquired)
                 {
                     aquired = time(NULL); // Faccio partire il timer per ping-pong, se non è ancora partito
                 }
+                fprintf(stderr, "[dbg]serv_client(%u) rimetto sent a 0\n", connessione->port_id);
                 continue;
             }
             else // se il thread ha già mandato, aspetta
@@ -335,22 +359,20 @@ void* serv_client(void* cl_info)
         {
             send_msg(connessione->socket, instr_to_client, 2);
             time_t ping_sent = time(NULL);
+            fprintf(stderr, "[dbg]serv_client(%u): mando ping\n", connessione->port_id);
             get_msg(connessione->socket, instr_from_client, 2);
             time_t elapsed = time(NULL) - ping_sent; // tempo impiegato dall'utente a rispondermi
-            fprintf(stderr, "[dbg] serv_client: tempo impiegato dall client a rispondermi al ping: %lu\n", elapsed);
+            fprintf(stderr, "[dbg]serv_client(%u): tempo impiegato dall client a rispondermi al ping %lu\n", connessione->port_id, elapsed);
             if(elapsed > TIME_PONG_MAX_DELAY)
             { 
-                // disconnetto la connessione, tolgo eventuali carte in doing, e le metto in todo
-
-                pthread_mutex_lock(&status.m);
-                status.n_connessioni--;
-                pthread_mutex_unlock(&status.m);
-
+                // disconnetto il client, tolgo carte in doing, e le metto in todo
+                fprintf(stderr, "[dbg]serv_client(%u) : %u non ha mandato il pong in tempo", connessione->port_id, connessione->port_id);
                 int card_id;
                 // finchè ci sono card in doing per l'utente...
                 pthread_rwlock_wrlock(&m_lavagna);
                 while((card_id = get_doing_card_id(connessione->port_id)) != -1)
                 {
+                    fprintf(stderr, "[dbg]serv_client(%u) : sposto card %d in todo\n", connessione->port_id, card_id);
                     lavagna_t *cc = extract_from_lavagna(&lavagna, (uint8_t)card_id);
                     if(cc) // non dovrebbe servire 
                     {
@@ -360,11 +382,19 @@ void* serv_client(void* cl_info)
                     }
                 }
                 pthread_rwlock_unlock(&m_lavagna);
+
                 pthread_mutex_lock(&lista_connessioni.m);
                 remove_connection(&(lista_connessioni.head), connessione->socket);
                 pthread_mutex_unlock(&lista_connessioni.m);
+
+                pthread_mutex_lock(&status.m);
+                status.n_connessioni--;
+                pthread_mutex_unlock(&status.m);
+
                 pthread_exit(NULL); // connessione terminata, termino thread
             }
+            // riparto a contare il tempo di aquired visto che sono qui
+            aquired = time(NULL); 
             continue;
         }
         send_msg(connessione->socket, instr_to_client, 2);

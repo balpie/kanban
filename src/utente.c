@@ -173,6 +173,7 @@ void *prompt_cycle_function(void* self_info)
                 // terminazione programma
                 close(listener);
                 close(server_sock);
+                fprintf(stderr, "[dbg] arrivato comando QUIT\n");
                 exit(0);
             case CMD_INVALID:
             case CMD_STAMPA_UTENTI_CONNESSI:
@@ -198,9 +199,5 @@ void *prompt_cycle_function(void* self_info)
         cmd_queue[cmd_head] = c;
         cmd_head = (cmd_head + 1) % MAX_QUEUE_CMD;
     }
-    // l'utente ha fatto quit
-    close(server_sock);
-    close(listener);
-    exit(0);
 }
 

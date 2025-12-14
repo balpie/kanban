@@ -58,6 +58,7 @@ int main(int argc, char* argv[])
         sprintf(logfilename, "%s%u", COMMON_LOGFILE_NAME, user_port);
         int logfile = open(logfilename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         dup2(logfile, STDERR_FILENO); // associo stderr al logfile
+        fprintf(stderr, "[dbg] sto per chidere fd: %d\n", logfile);
         close(logfile);
         fflush(stderr);
     }
@@ -71,18 +72,26 @@ int main(int argc, char* argv[])
 
     pthread_create(&prompt_cycle, NULL, prompt_cycle_function, self_info);
     pthread_detach(prompt_cycle);
+
+    // variabile per logging
+    unsigned char old_instr_from_server = 0;
         
     for(;;) // Ciclo di comunicazione con server
     {
         peer_list *peers = NULL;
         unsigned char instr_to_server[2];
         unsigned char instr_from_server[2];
+
         get_msg(server_sock, instr_from_server, 2);
+        // DEBUG
+        if(instr_from_server[0] != old_instr_from_server)
+        {
+            fprintf(stderr, "[dbg] main: Ricevuto da server %u\n", instr_from_server[0]);
+            old_instr_from_server = instr_from_server[0];
+        }
         if(instr_from_server[0] == INSTR_AVAL_CARD)
         {
             // Lista di peer per questa card
-            deallocate_list(&peers);
-            peers = NULL;
             fprintf(stderr, "[dbg] main: devono arrivare %u peers\n", instr_from_server[1]);
             for(uint8_t i = 0; i < instr_from_server[1]; i++)
             {
@@ -102,6 +111,7 @@ int main(int argc, char* argv[])
             peer_list *pp = (peer_list*)malloc(sizeof(peer_list));
             pp->port = user_port;
             pp->addr = 0; 
+            pp->sock = -1;
             pp->next = NULL;
             insert_peer(&peers, pp);
 
@@ -141,6 +151,8 @@ int main(int argc, char* argv[])
             }
             free(contended_card);
             send_msg(server_sock, (void*)&network_winner, 2);
+            // ho finito, dealloco la lista dei peer
+            deallocate_list(&peers);
             continue;
         }
         if(instr_from_server[0] == INSTR_PING)
