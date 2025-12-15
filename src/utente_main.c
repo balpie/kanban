@@ -36,6 +36,136 @@ void err_args(char* prg)
         exit(-1);
 }
 
+void get_peers(peer_list **peers, int server_sock, unsigned char instr_from_server[2], uint16_t user_port)
+{
+    // Inizio get peer
+    LOG("main: devono arrivare %u peers\n", instr_from_server[1]);
+    for(uint8_t i = 0; i < instr_from_server[1]; i++)
+    {
+        peer_list *pp = recive_peer(server_sock);
+        if(pp)
+        {
+            LOG( "chiamo insert_peer su \n\taddr: %u\n\tport: %u\n", 
+                    pp->addr, pp->port);
+            insert_peer(peers, pp);
+        }
+        else
+        {
+            LOG( "main: errore ricezione peer\n");
+        }
+    }
+    // aggiungo la porta di questo processo questo semplifica l'"iterazione" p2p
+    peer_list *pp = (peer_list*)malloc(sizeof(peer_list));
+    pp->port = user_port;
+    pp->addr = 0; 
+    pp->sock = -1;
+    pp->next = NULL;
+    insert_peer(peers, pp);
+    // fine get peer
+}
+
+// Se presente, preleva comando dalla coda circolare, lo manda alla lavagna, e gestisce la risposta
+void send_command(int server_sock)
+{
+    unsigned char instr_from_server[2];
+    unsigned char instr_to_server[2];
+    char c;
+    if(cmd_tail == cmd_head) // caso in cui non ho comandi da eseguire
+    {
+        // Torno ad aspettare che il server abbia qualcosa da fare
+        return; 
+    }
+    c = cmd_queue[cmd_tail];
+    cmd_tail = (cmd_tail + 1) % MAX_QUEUE_CMD;
+    LOG("main: comando arrivato: %c\n", c);
+    switch(c)
+    {
+        case CMD_CREATE_CARD:
+            pthread_mutex_lock(&created_m);
+            printf("\n>> mandando card appena creata...\n");
+
+            // posso mandare la card
+            send_card(server_sock, created); // manda card al server
+            free(created->desc); // libero la descrizione, anc'essa allocata nello heap
+
+             // libero la card 
+            free(created); 
+            pthread_mutex_unlock(&created_m);
+            printf("\n>> carta mandata!\n");
+            int msglen = get_msg(server_sock, instr_from_server, 2);
+            if(!msglen)
+            {
+                disconnect(server_sock);
+            }
+            if(instr_from_server[0] == INSTR_ACK)
+            {
+                printf("\n>> carta valida!\n");
+            }
+            else
+            {
+                printf("\n>> carta non valida!\n");
+            }
+            printf("utente> ");
+            fflush(stdout);
+            break;
+        case CMD_SHOW_LAVAGNA:
+            LOG( "[dbg]: arrivato comando SHOW_LAVAGNA\n");
+            // Prendi instr from server, che indicherà la quantità di card presenti nella lavagna
+            // Se il byte di stato è INSTR_EMPTY il secondo byte non è significativo, e la lavagna è
+            // vuota
+            // Comunico il mio intento al server
+            instr_to_server[0] = INSTR_SHOW_LAVAGNA;
+            send_msg(server_sock, instr_to_server, 2);
+            LOG( "[dbg]: mi faccio dire da lavagna quante card ho da ricevere\n");
+            msglen = get_msg(server_sock, instr_from_server, 2);
+            if(!msglen)
+            {
+                disconnect(server_sock);
+            }
+            if(instr_from_server[0] == INSTR_EMPTY)
+            {
+                libera_lavagna(lavagna);
+                lavagna = NULL;
+                show_lavagna(lavagna);
+                break;
+            }
+            uint8_t count = instr_from_server[1];
+            for(uint8_t i = 0; i < count; i++)
+            {
+                LOG( "main, valuto card %d-esima\n", i+1);
+                // ricevo dimensione descrizione card
+                msglen = get_msg(server_sock, instr_from_server, 2);
+                if(msglen < 0) LOG("Il messaggio non è arrivato!!!\n");
+                if(!msglen)
+                {
+                    disconnect(server_sock);
+                }
+                // ricevo la card
+                task_card_t *cc = recive_card(server_sock, instr_from_server[1]);
+                // la inserisco nella lavagna vuota
+                insert_into_lavagna(&lavagna, cc);
+                free(cc);
+            }
+            show_lavagna(lavagna);
+            libera_lavagna(lavagna);
+            lavagna = NULL;
+            break;
+        case CMD_CARD_DONE:
+            // Per ora l'utente può finire le task con ordine LIFO
+            if(!doing)
+            {
+                printf(">! nessuna carta in doing, comando equivalente a NOP\n");
+                break;
+            }
+            instr_to_server[0] = INSTR_CARD_DONE;
+            instr_to_server[1] = doing->card.id; 
+            LOG( "Estraggo dalla lavagna\n");
+            extract_from_lavagna(&doing, doing->card.id); // estrazione in testa
+            send_msg(server_sock, instr_to_server, 2);
+            break;
+    }
+}
+
 int main(int argc, char* argv[])
 {
     srand(time(NULL));
@@ -58,21 +188,20 @@ int main(int argc, char* argv[])
         // TODO error check
         // redirigo i messaggi di errore a un file
         printf(">> Redirigo stderr a un file\n");
-
         // nome log file di dimensione strlen(prefisso) + (massimo numero cifre uint16_t) + '\0'
-        char logfilename[strlen(COMMON_LOGFILE_NAME) + 5 + 1];
+        char logfilename[sizeof(COMMON_LOGFILE_NAME) + 6];
         sprintf(logfilename, "%s%u", COMMON_LOGFILE_NAME, user_port);
         int logfile = open(logfilename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         dup2(logfile, STDERR_FILENO); // associo stderr al logfile
-        fprintf(stderr, "[dbg] sto per chidere fd: %d\n", logfile);
+        LOG( "sto per chidere fd: %d\n", logfile);
         close(logfile);
         fflush(stderr);
     }
     printf(">> Registrazione al server con porta %u...\n", user_port);
     int server_sock = registra_utente(user_port);
-    fprintf(stderr, "[dbg] do al socket timeout 1s in send\n");
+    LOG( "do al socket timeout 1s in send\n");
     if (setsockopt (server_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_recv, sizeof(timeout_recv)) < 0)
-        fprintf(stderr, "[err]errore setsockopt\n");
+        ERR( "errore setsockopt\n");
     int self_info[2] = {user_port, server_sock};
 
     struct sockaddr_in listener_addr;
@@ -91,55 +220,56 @@ int main(int argc, char* argv[])
         unsigned char instr_to_server[2];
         unsigned char instr_from_server[2];
 
-        get_msg(server_sock, instr_from_server, 2);
-        // DEBUG
+        int msglen = get_msg(server_sock, instr_from_server, 2);
+        if(!msglen)
+        { // caso lavagna disconnessa
+            disconnect(server_sock);
+        }
+        if(msglen < 0) // Se il server non mi ha mandato nulla
+        {
+            // mando, se c'è, un comando
+            send_command(server_sock);
+            continue;
+        }
+
+        LOG("main: msglen %d", msglen); 
         if(instr_from_server[0] != old_instr_from_server)
         {
-            fprintf(stderr, "[dbg] main: Ricevuto da server %u\n", instr_from_server[0]);
+            LOG("main: Ricevuto da server %u\n", instr_from_server[0]);
             old_instr_from_server = instr_from_server[0];
         }
+
         if(instr_from_server[0] == INSTR_AVAL_CARD)
         {
             // Lista di peer per questa card
-            fprintf(stderr, "[dbg] main: devono arrivare %u peers\n", instr_from_server[1]);
-            for(uint8_t i = 0; i < instr_from_server[1]; i++)
-            {
-                peer_list *pp = recive_peer(server_sock);
-                if(pp)
-                {
-                    fprintf(stderr, "[dbg] chiamo insert_peer su \n\taddr: %u\n\tport: %u\n", 
-                            pp->addr, pp->port);
-                    insert_peer(&peers, pp);
-                }
-                else
-                {
-                    fprintf(stderr, "[dbg] main: errore ricezione peer\n");
-                }
-            }
-            // aggiungo la porta di questo processo questo semplifica l'"iterazione" p2p
-            peer_list *pp = (peer_list*)malloc(sizeof(peer_list));
-            pp->port = user_port;
-            pp->addr = 0; 
-            pp->sock = -1;
-            pp->next = NULL;
-            insert_peer(&peers, pp);
+            get_peers(&peers, server_sock, instr_from_server, user_port);
 
             // richiedo la dimensione della card
-            get_msg(server_sock, instr_from_server, 2);
-            fprintf(stderr, "[dbg] main, card arriva di dimensione %u\n", instr_from_server[1]);
+            msglen = get_msg(server_sock, instr_from_server, 2);
+            if(msglen < 0) LOG("Il messaggio non è arrivato!!!\n");
+            if(!msglen)
+            {
+                disconnect(server_sock);
+            }
+            LOG( "main, card arriva di dimensione %u\n", instr_from_server[1]);
             task_card_t *contended_card = recive_card(server_sock, (uint8_t)instr_from_server[1]);
 
-            fprintf(stderr, "[dbg] main, card ricevuta: \n");
+            LOG( "main, card ricevuta: \n");
             show_card(contended_card);
 
             // Mando ack per dire al server che ho ricevuto card e peers
             instr_to_server[0] = instr_to_server[1] = INSTR_ACK_PEERS; 
-            fprintf(stderr, "[dbg] mando ack al server\n");
+            LOG( "mando ack al server\n");
             send_msg(server_sock, instr_to_server, 2);
 
             // Aspetto che tutti i client siano pronti
-            fprintf(stderr, "[dbg] Aspetto che tutti i client siano pronti\n");
-            get_msg(server_sock, instr_from_server, 2);
+            LOG( "Aspetto che tutti i client siano pronti\n");
+            msglen = get_msg(server_sock, instr_from_server, 2);
+            if(msglen < 0) LOG("Il messaggio non è arrivato!!!\n");
+            if(!msglen)
+            {
+                disconnect(server_sock);
+            }
 
             // p2p()...
             // funzione di utilità per fine di testing e debug
@@ -151,10 +281,10 @@ int main(int argc, char* argv[])
             {
                 p = p->next;
             }
-            fprintf(stderr, "[dbg] mando porta vincitore, tale: %u\n", winner);
+            LOG( "mando porta vincitore, tale: %u\n", winner);
             uint16_t network_winner = htons(winner);
 
-            fprintf(stderr, "[dbg] user_port %u\twinner %u\n", user_port ,winner);
+            LOG( "user_port %u\twinner %u\n", user_port ,winner);
             if(winner == user_port)
             {
                 printf(">> Ho proposto il costo minore, quindi mi prendo la card\n");
@@ -169,97 +299,10 @@ int main(int argc, char* argv[])
         if(instr_from_server[0] == INSTR_PING)
         { // se mi arriva ping mando pong // TODO test
             instr_to_server[0] = INSTR_PING;
-            //FIXME fprintf(stderr, "[dbg] main: mando pong a lavagna\n");
-            fprintf(stderr, "[tst] Faccio arrivare apposta in ritardo il pong\n");
-            sleep(10); 
+            TST("Faccio arrivare apposta in ritardo il pong\n");
+            sleep(2); 
             send_msg(server_sock, instr_to_server, 2);
             continue;
-        }
-        char c;
-        if(cmd_tail == cmd_head) // caso in cui non ho comandi da eseguire
-        {
-            instr_to_server[0] = INSTR_NOP;
-            send_msg(server_sock, instr_to_server, 2); // comunico al server che anche il client
-                                                       // non ha nulla da fare
-            sleep(1); // TODO setsockopt SO_RECVTIMEOUT
-            continue;
-        }
-        c = cmd_queue[cmd_tail];
-        cmd_tail = (cmd_tail + 1) % MAX_QUEUE_CMD;
-        fprintf(stderr ,"[dbg] main: comando arrivato: %c\n", c);
-        switch(c)
-        {
-            case CMD_CREATE_CARD:
-                pthread_mutex_lock(&created_m);
-                printf("\n>> mandando card appena creata...\n");
-
-                // posso mandare la card
-                send_card(server_sock, created); // manda card al server
-                free(created->desc); // libero la descrizione, anc'essa allocata nello heap
-
-                 // libero la card 
-                free(created); 
-                pthread_mutex_unlock(&created_m);
-                printf("\n>> carta mandata!\n");
-                get_msg(server_sock, instr_from_server, 2);
-                if(instr_from_server[0] == INSTR_ACK)
-                {
-                    printf("\n>> carta valida!\n");
-                }
-                else
-                {
-                    printf("\n>> carta non valida!\n");
-                }
-                printf("utente> ");
-                fflush(stdout);
-                break;
-            case CMD_SHOW_LAVAGNA:
-                fprintf(stderr, "[dbg]: arrivato comando SHOW_LAVAGNA\n");
-                // Prendi instr from server, che indicherà la quantità di card presenti nella lavagna
-                // Se il byte di stato è INSTR_EMPTY il secondo byte non è significativo, e la lavagna è
-                // vuota
-                // Comunico il mio intento al server
-                instr_to_server[0] = INSTR_SHOW_LAVAGNA;
-                send_msg(server_sock, instr_to_server, 2);
-                fprintf(stderr, "[dbg]: mi faccio dire da lavagna quante card ho da ricevere\n");
-                get_msg(server_sock, instr_from_server, 2);
-                if(instr_from_server[0] == INSTR_EMPTY)
-                {
-                    libera_lavagna(lavagna);
-                    lavagna = NULL;
-                    show_lavagna(lavagna);
-                    break;
-                }
-                uint8_t count = instr_from_server[1];
-                for(uint8_t i = 0; i < count; i++)
-                {
-                    fprintf(stderr, "[dbg] main, valuto card %d-esima\n", i+1);
-                    // TODO Error checking
-                    // ricevo dimensione descrizione card
-                    get_msg(server_sock, instr_from_server, 2);
-                    // ricevo la card
-                    task_card_t *cc = recive_card(server_sock, instr_from_server[1]);
-                    // la inserisco nella lavagna vuota
-                    insert_into_lavagna(&lavagna, cc);
-                    free(cc);
-                }
-                show_lavagna(lavagna);
-                libera_lavagna(lavagna);
-                lavagna = NULL;
-                break;
-            case CMD_CARD_DONE:
-                // Per ora l'utente può finire le task con ordine LIFO
-                if(!doing)
-                {
-                    printf(">! nessuna carta in doing, comando equivalente a NOP\n");
-                    break;
-                }
-                instr_to_server[0] = INSTR_CARD_DONE;
-                instr_to_server[1] = doing->card.id; 
-                fprintf(stderr, "[dbg] Estraggo dalla lavagna\n");
-                extract_from_lavagna(&doing, doing->card.id); // estrazione in testa
-                send_msg(server_sock, instr_to_server, 2);
-                break;
         }
     }
     close(listener);

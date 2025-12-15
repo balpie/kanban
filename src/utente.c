@@ -32,7 +32,11 @@ int registra_utente(int port)
     if(send_msg(sd, &nport, 2)) // mando al server la mia porta per registrarmi
     {
         char instr_from_server[2];
-        get_msg(sd, instr_from_server, 2);
+        int msglen = get_msg(sd, instr_from_server, 2);
+        if(!msglen)
+        {
+            disconnect(sd);
+        }
         if(instr_from_server[1] == INSTR_TAKEN)
         {
             printf(">! registrazione fallita: porta già utilizzata da un altro client\n");
@@ -43,7 +47,7 @@ int registra_utente(int port)
     }
     else
     {
-        printf(">> registrazione fallita per motivo server\n");
+        printf("<< registrazione fallita per motivo server\n");
         close(sd);
         close(listener);
         exit(-1);
@@ -61,7 +65,7 @@ char* get_desc(char* buf)
         {
             printf(">! la descrizone non può essere vuota\n");
         }
-        printf(">> inserire la descrizione dell'attività, da terminare con a-capo. Massimo %d caratteri:\n", 
+        printf("<< inserire la descrizione dell'attività, da terminare con a-capo. Massimo %d caratteri:\n", 
                 MAX_DIM_DESC);
         if(!fgets(buf, MAX_DIM_DESC, stdin))
         {
@@ -97,7 +101,7 @@ int get_col()
         printf("\t0: To Do\n");
         printf("\t1: Doing\n");
         printf("\t2: Done\n");
-        printf(">> inserire colonna: ");
+        printf("<< inserire colonna: ");
         if(!fgets(buf, 2, stdin)) // 1 cifra + \n
         {
             perror(">! errore fgets, la card non è stata creata");
@@ -116,7 +120,7 @@ task_card_t *create_card()
 {
     task_card_t *new_card = (task_card_t*)malloc(sizeof(task_card_t));
     char buf[MAX_DIM_DESC];
-    printf(">> inserire id (0 <= id < 256): ");
+    printf("<< inserire id (0 <= id < 256): ");
     if(!fgets(buf, 4, stdin)) // 3 cifre + \n
     {
         printf(">! errore fgets, la card non è stata creata");
@@ -151,6 +155,14 @@ task_card_t *create_card()
     return new_card;
 }
 
+void disconnect(int server_sock)
+{
+    close(listener);
+    close(server_sock);
+    LOG("arrivato comando QUIT\n");
+    exit(0);
+}
+
 void *prompt_cycle_function(void* self_info)
 {
     int* port_sock = (int*)self_info;
@@ -172,11 +184,8 @@ void *prompt_cycle_function(void* self_info)
                 // no comando
                 continue;
             case CMD_QUIT:
-                // terminazione programma
-                close(listener);
-                close(server_sock);
-                fprintf(stderr, "[dbg] arrivato comando QUIT\n");
-                exit(0);
+                // disconnessione e terminazione programma
+                disconnect(server_sock);
             case CMD_INVALID:
             case CMD_STAMPA_UTENTI_CONNESSI:
                 printf(">! comando inesistente, o prefisso comune a più comandi\n");
@@ -194,7 +203,7 @@ void *prompt_cycle_function(void* self_info)
                 }
                 break;
             case CMD_SHOW_LAVAGNA:
-                fprintf(stderr, "[dbg] prompt: Arrivato comando show lavagna\n\tcmd_head: %d\n\tcmd_tail: %d\n",
+                LOG( "prompt: Arrivato comando show lavagna\n\tcmd_head: %d\n\tcmd_tail: %d\n",
                         cmd_head, cmd_tail);
                 break;
         }   

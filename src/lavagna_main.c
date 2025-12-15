@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) // main thread: listener
             new_sock = accept(sock_listener, (struct sockaddr*)&new_connection, &len_new);
             fprintf(stderr, "[dbg] do al socket timeout 1s in send\n");
             if (setsockopt (new_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_recv, sizeof(timeout_recv)) < 0)
-                fprintf(stderr, "[err]errore setsockopt\n");
+                LOG("errore setsockopt\n");
             // alloco nello heap altrimenti in caso di connessioni molto vicine tra loro
             // se fosse nello stack del main rischierei che si sovrascrivessero dandomi
             // strutture dati inconsistenti

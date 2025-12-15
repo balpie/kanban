@@ -36,6 +36,8 @@ extern int sock_listener; // in modo da poter terminare dai thread
 extern lavagna_t *lavagna;
 extern pthread_rwlock_t m_lavagna;
 extern struct server_status status;
+extern struct timeval timeout_recv; 
+
 // THREADS
 void* prompt_cycle(void *);
 

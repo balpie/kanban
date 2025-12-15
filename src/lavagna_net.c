@@ -56,6 +56,7 @@ void send_connection(int sock, connection_l_e* conn)
 {
     uint16_t port = htons(conn->port_id); 
     uint32_t addr = htonl(conn->addr);
+    LOG( "send_connection, port: %u\taddr: %u\n", ntohs(port), ntohl(addr));
     send_msg(sock, &port, 2);
     send_msg(sock, &addr, 4);
 }
@@ -79,6 +80,7 @@ void send_conn_list(int sock, connection_l_e* escluso, uint8_t quanti)
     // starà ai client comunicare l'esito fallito dell'operazione
     while(quanti > 0)
     {
+        LOG("send_conn_list: caso disconnessione inaspettata\n");
         quanti--;
         send_connection(sock, &dummy);
     }

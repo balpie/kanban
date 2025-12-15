@@ -37,6 +37,11 @@
 // 256 byte, di cui uno per '\0', in modo da poter
 // esprimere la dimensione dei messaggi con un singolo byte
 
+// error logs
+#define LOG(...) fprintf(stderr, "[dbg] " __VA_ARGS__)
+#define ERR(...) fprintf(stderr, "[err] " __VA_ARGS__)
+#define TST(...) fprintf(stderr, "[tst] " __VA_ARGS__)
+
 struct task_card_tipo { 
     uint8_t id; 
     uint8_t colonna; 

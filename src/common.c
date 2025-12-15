@@ -23,33 +23,31 @@ const char CMD_ARR[] = {
 
 void show_lavagna(lavagna_t *l)
 {
-    printf("\n-----------------------\n");
     if(!l)
     {
+        printf("\n-----------------------\n");
         printf("\n-----LAVAGNA VUOTA-----\n");
         printf("\n-----------------------\n");
         return;
     }
-    printf("\n-----TO DO-----\n");
+    printf("\n+-----TO DO-----+\n");
     while(l && l->card.colonna == TODO_COL)
     {
         show_card(&(l->card));
         l = l->next;
     }
-    printf("-----DOING-----\n");
+    printf("+-----DOING-----+\n");
     while(l && l->card.colonna == DOING_COL)
     {
         show_card(&(l->card));
         l = l->next;
     }
-    printf("-----DONE-----\n");
+    printf("+-----DONE------+\n");
     while(l && l->card.colonna == DONE_COL)
     {
         show_card(&(l->card));
         l = l->next;
     }
-    printf("\n-----------------------\n");
-    if(!l)
     return;
 }
 
@@ -131,10 +129,10 @@ void show_card(task_card_t *cc)
     struct tm *lastmod = localtime(&cc->last_modified);
     strftime(buf, 9, "%H:%M:%S", lastmod);
     printf("Id card: \t%u\n", cc->id);
-    printf("Id utente: \n\t"); 
+    printf("Id utente: \t"); 
     (cc->utente >= 1024) ? printf("%u\n", cc->utente) : printf("card non ancora assegnata\n");
-    printf("Ultima modifica: \n\t%s\n", buf);
-    printf("Descrizione card:\n\t%s\n", cc->desc);
+    printf("Ultima modifica: \t%s\n", buf);
+    printf("Descrizione card:\t%s\n", cc->desc);
 }
 
 void to_upper_case(char* str) 
@@ -188,7 +186,7 @@ char prompt_line(char* content)
     printf("%s> ", content);
     if(!fgets(cmdbuf, MAX_CMD_SIZE, stdin)) // caso ctrl-d o errore
     {
-        fprintf(stderr, "\n[dbg] COMMON(prompt_line): fgets ha ritornato 0, fileno(stdin): %d\n errore:\n",
+        LOG( "\nCOMMON(prompt_line): fgets ha ritornato 0, fileno(stdin): %d\n errore:\n",
                 fileno(stdin));
         if(ferror(stdin))
             perror(NULL);

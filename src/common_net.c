@@ -72,15 +72,17 @@ int init_listener(struct sockaddr_in* server_addr, uint16_t port)
     server_addr->sin_addr.s_addr = INADDR_ANY;
     server_addr->sin_family = AF_INET;
     server_addr->sin_port = htons(port);
-    fprintf(stderr, "[dbg] init_listener: inizializzo listener con porta: %d\n", port);
+    ERR("init_listener: inizializzo listener con porta: %d\n", port);
     if(bind(listener, (struct sockaddr*)server_addr, sizeof(*server_addr)) < 0)
     {
-        perror("[init_listener] errore bind");
+        ERR("init_listener errore bind");
+        perror(NULL);
         exit(-1);
     }
     if(listen(listener, MAX_QUEUE) < 0)
     {
-        perror("[init_listener] errore listen");
+        ERR("init_listener errore listen");
+        perror(NULL);
         exit(-1);
     }
     return listener;
@@ -88,7 +90,6 @@ int init_listener(struct sockaddr_in* server_addr, uint16_t port)
 
 
 // riceve messaggio dal socket (argomento 1) un messaggio di dimensione (argomento 2)
-// TODO loop per caso recived < size
 int get_msg(int sock, void *buf, size_t size)
 {
     ssize_t recived = 0;

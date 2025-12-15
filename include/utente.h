@@ -43,6 +43,9 @@ int registra_utente(int);
 // SHOW_LAVAGNA:
 // Viene mostrata la lavagna, con le card assegnate ognuna alla giusta colonna
 
+
+// Disconnette l'utente dalla lavagna e termina(da passare socket del server)
+void disconnect(int);
 // PONG_LAVAGNA:
 // Messaggio di risposta a PING_USER
 
