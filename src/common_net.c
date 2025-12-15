@@ -116,6 +116,9 @@ int get_msg(int sock, void *buf, size_t size)
 
 int send_card(int socket, task_card_t *cc)
 {
+    LOG("send_card: sizeof net_card = "
+            "\nsizeof(*cc) - sizeof(cc->desc) + strlen(cc->desc) = "
+            "\n%lu - %lu + %lu", sizeof(*cc), sizeof(cc->desc), strlen(cc->desc));
     size_t net_card = sizeof(*cc) - sizeof(cc->desc) + strlen(cc->desc);
     char buffer[net_card]; 
     unsigned dim = prepare_card(cc, buffer);

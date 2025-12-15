@@ -160,7 +160,7 @@ void disconnect(int server_sock)
     close(listener);
     close(server_sock);
     LOG("arrivato comando QUIT\n");
-    exit(0);
+    _exit(0); // uso questa in modo da terminare anche il thread fermo su fgets
 }
 
 void *prompt_cycle_function(void* self_info)

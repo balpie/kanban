@@ -10,7 +10,18 @@
 peer_list *recive_peer(int sock)
 {
     unsigned char buf[6];
-    get_msg(sock, buf, 6);
+    
+    int msglen;
+    unsigned attempts = 0;
+    while((msglen = get_msg(sock, buf, 6)) < 0)
+    {
+        LOG("recive_peer: ricezione peer fallita, riprovo (%u)\n", ++attempts);
+    }
+    if(!msglen) // Connessione chiusa
+    {
+        LOG("recive_peer: lavagna ha chiuso la connessione");
+        return NULL;
+    }
     peer_list* new = (peer_list*)malloc(sizeof(peer_list));
     memcpy(&new->port, &buf[0], 2);
     memcpy(&new->addr, &buf[2], 4);

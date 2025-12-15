@@ -33,7 +33,7 @@ void err_args(char* prg)
         printf(">! utilizzo: %s <porta> [-d]\n", prg);
         printf(">! il parametro <porta> deve essere un intero rappresentabile su 16 bit maggiore di 5678\n");
         printf(">! passare argomento -d per redirigere il logging da file a schermo\n");
-        exit(-1);
+        _exit(-1);
 }
 
 void get_peers(peer_list **peers, int server_sock, unsigned char instr_from_server[2], uint16_t user_port)
@@ -51,7 +51,8 @@ void get_peers(peer_list **peers, int server_sock, unsigned char instr_from_serv
         }
         else
         {
-            LOG( "main: errore ricezione peer\n");
+            LOG("get_peers: connessione chiusa\n");
+            disconnect(server_sock);
         }
     }
     // aggiungo la porta di questo processo questo semplifica l'"iterazione" p2p
@@ -299,8 +300,8 @@ int main(int argc, char* argv[])
         if(instr_from_server[0] == INSTR_PING)
         { // se mi arriva ping mando pong // TODO test
             instr_to_server[0] = INSTR_PING;
-            TST("Faccio arrivare apposta in ritardo il pong\n");
-            sleep(2); 
+            //TST("Faccio arrivare apposta in ritardo il pong\n");
+            //sleep(2); 
             send_msg(server_sock, instr_to_server, 2);
             continue;
         }

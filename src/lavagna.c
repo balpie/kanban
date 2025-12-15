@@ -263,7 +263,7 @@ void disconnect_user(connection_l_e* connessione)
 
 // funzione che manda al client le informazioni necessarie alla comunicazione p2p
 void send_p2p_info(connection_l_e *connessione)
- {
+{
     unsigned char instr_to_client[2]; // messaggio di istruzioni da mandare al client
     unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
 
@@ -322,15 +322,22 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
     pthread_mutex_lock(&status.m);
     if(++status.winner_arrived == status.total)
     {
-        pthread_rwlock_wrlock(&m_lavagna);
-        LOG( " serv_client: preso lock lavagna, setto effettivamente winner: %d\n", winner);
-        lavagna_t* contended = extract_from_lavagna(&lavagna, lavagna->card.id);
-        contended->card.colonna = DOING_COL;
-        contended->card.utente = winner;
-        insert_lavagna_elem(&lavagna, contended);
-        // mostro la lavagna a video visto che l'ho cambiata'
-        show_lavagna(lavagna); 
-        pthread_rwlock_unlock(&m_lavagna);
+        if(VALID_PORT(winner))
+        {
+            pthread_rwlock_wrlock(&m_lavagna);
+            LOG("serv_client: preso lock lavagna, setto effettivamente winner: %d\n", winner);
+            lavagna_t* contended = extract_from_lavagna(&lavagna, lavagna->card.id);
+            contended->card.colonna = DOING_COL;
+            contended->card.utente = winner;
+            insert_lavagna_elem(&lavagna, contended);
+            // mostro la lavagna a video visto che l'ho cambiata'
+            show_lavagna(lavagna); 
+            pthread_rwlock_unlock(&m_lavagna);
+        }
+        else
+        {
+            ERR("serv_client: fallimento asta, winner (%u) non valido \n", winner);
+        }
         
         // A questo punto devo disfare le cose di status
         // ordine lock: status, connessioni, lavagna
@@ -498,8 +505,6 @@ void* serv_client(void* cl_info)
             pthread_rwlock_unlock(&m_lavagna);
             break;
         case INSTR_NOP:
-            // Ne client ne server hanno "da fare"
-            sleep(1);  // TODO setsockopt SO_RECVTIMEOUT
             break;
         case INSTR_CARD_DONE:
             // TODO Finisci

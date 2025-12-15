@@ -21,33 +21,89 @@ const char CMD_ARR[] = {
     CMD_CARD_DONE
 };
 
+void print_in_box(char* str, size_t size, char delimiter)
+{
+    if(!str)
+    {
+        str = " ";
+    }
+    while(*str)
+    {
+        for(size_t j = 0; j < size; j++) 
+        {
+            if(j == 0 || j == size-1)
+            {
+                putchar(delimiter);
+                continue;
+            }
+            if(*str)
+            {
+                putchar(*str);
+                str++;
+            }
+            else
+            {
+                putchar(' ');
+            }
+        }
+        putchar('\n');
+    }
+}
+
+
 void show_lavagna(lavagna_t *l)
 {
+    putchar('\n');
     if(!l)
     {
-        printf("\n-----------------------\n");
-        printf("\n-----LAVAGNA VUOTA-----\n");
-        printf("\n-----------------------\n");
+        printf("+-----------------------+\n");
+        printf("|     LAVAGNA VUOTA     |\n");
+        printf("+-----------------------+\n");
         return;
     }
-    printf("\n+-----TO DO-----+\n");
+    printf("+---------TODO----------+\n");
+    if(!(l && l->card.colonna == TODO_COL))
+    {
+        print_in_box(NULL, LAVAGNA_WIDTH, '|');
+    }
     while(l && l->card.colonna == TODO_COL)
     {
         show_card(&(l->card));
         l = l->next;
+        if(l && l->card.colonna == TODO_COL)
+        {
+            print_in_box(NULL, LAVAGNA_WIDTH, '|');
+        }
     }
-    printf("+-----DOING-----+\n");
+    printf("+---------DOING---------+\n");
+    if(!(l && l->card.colonna == DOING_COL))
+    {
+        print_in_box(NULL, LAVAGNA_WIDTH, '|');
+    }
     while(l && l->card.colonna == DOING_COL)
     {
         show_card(&(l->card));
         l = l->next;
+        if(l && l->card.colonna == DOING_COL)
+        {
+            print_in_box(NULL, LAVAGNA_WIDTH, '|');
+        }
     }
-    printf("+-----DONE------+\n");
+    printf("+---------DONE----------+\n");
+    if(!(l && l->card.colonna == DONE_COL))
+    {
+        print_in_box(NULL, LAVAGNA_WIDTH, '|');
+    }
     while(l && l->card.colonna == DONE_COL)
     {
         show_card(&(l->card));
         l = l->next;
+        if(l && l->card.colonna == DONE_COL)
+        {
+            print_in_box(NULL, LAVAGNA_WIDTH, '|');
+        }
     }
+    printf("+-----------------------+\n");
     return;
 }
 
@@ -123,16 +179,29 @@ void libera_lavagna(lavagna_t* ll)
     libera_lavagna(tmp);
 }
 
+// stampa la stringa passata rispettando un box laterale di dimensione size, 
+// e mette delimiter prima e dopo essere andato a capo
 void show_card(task_card_t *cc)
 {
-    char buf[9];
+    char timebuf[9];
+    char other[MAX_DIM_DESC + 5];
     struct tm *lastmod = localtime(&cc->last_modified);
-    strftime(buf, 9, "%H:%M:%S", lastmod);
-    printf("Id card: \t%u\n", cc->id);
-    printf("Id utente: \t"); 
-    (cc->utente >= 1024) ? printf("%u\n", cc->utente) : printf("card non ancora assegnata\n");
-    printf("Ultima modifica: \t%s\n", buf);
-    printf("Descrizione card:\t%s\n", cc->desc);
+    strftime(timebuf, 9, "%H:%M:%S", lastmod);
+    sprintf(other, "card: %u", cc->id);
+    print_in_box(other, LAVAGNA_WIDTH, '|');
+    if(VALID_PORT(cc->utente))
+    {
+        sprintf(other, "user: %u", cc->utente);
+    }
+    else
+    {
+        sprintf(other, "user: NO_USR");
+    }
+    print_in_box(other, LAVAGNA_WIDTH, '|');
+    sprintf(other, "time: %s", timebuf);
+    print_in_box(other, LAVAGNA_WIDTH, '|');
+    sprintf(other, "desc: %s   ", cc->desc);
+    print_in_box(other, LAVAGNA_WIDTH, '|');
 }
 
 void to_upper_case(char* str) 

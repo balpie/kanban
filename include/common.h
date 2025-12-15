@@ -41,6 +41,10 @@
 #define LOG(...) fprintf(stderr, "[dbg] " __VA_ARGS__)
 #define ERR(...) fprintf(stderr, "[err] " __VA_ARGS__)
 #define TST(...) fprintf(stderr, "[tst] " __VA_ARGS__)
+// Utility
+#define VALID_PORT(pp) ((pp > 5678) ? (1) : (0))
+
+#define LAVAGNA_WIDTH 25
 
 struct task_card_tipo { 
     uint8_t id; 

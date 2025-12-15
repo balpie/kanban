@@ -6,9 +6,9 @@
 
 // Tempi in secondi
 // attesa tra una richiesta di ping e un altra
-#define TIME_PING 5U
+#define TIME_PING 90U
 // Massimo delay pong
-#define TIME_PONG_MAX_DELAY 1U
+#define TIME_PONG_MAX_DELAY 30U
 
 #define MAX_SERVER_PROCS 256
 
