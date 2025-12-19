@@ -46,4 +46,7 @@ int init_sockets(peer_list*);
 //       che è il peer con costo minimo fino ad adesso
 unsigned kanban_p2p_iteration(int, peer_list* ,peer_list*, uint16_t, uint16_t*);
 
+// timeout socket utente (sia recv che send)
+extern struct timeval timeout_p2p;
+
 #endif

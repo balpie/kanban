@@ -11,22 +11,30 @@
 #include <time.h>
 
 lavagna_t *lavagna = NULL;
-// coda circolare dei comandi
-// Visto che siamo in caso Single Producer - Single Consumer
-// la coda circolare dovrebbe essere thread safe.
-// TODO NON E VERO PERCHE IL COMPILATORE PUO RIORDINARE 
+
 char cmd_queue[MAX_QUEUE_CMD];
-task_card_t *created = NULL;
-lavagna_t *doing = NULL;
-pthread_mutex_t created_m;
 int cmd_head = 0;
 int cmd_tail = 0;
+pthread_mutex_t cmd_queue_m;
+
+task_card_t *created = NULL;
+pthread_mutex_t created_m; 
+
+lavagna_t *doing = NULL; // non serve mutex: 
+                         // struttura dati nota esclusivamente qui
 int listener;
 
+// timeout socket con lavagna
 struct timeval timeout_recv = {
     .tv_sec = 1,
     .tv_usec = 0
 };      
+// 3 secondi massimi di attesa in ingresso e in uscita ai socket
+struct timeval timeout_p2p = {
+    .tv_sec = 3,
+    .tv_usec = 0
+};
+
 
 void err_args(char* prg)
 {
@@ -71,27 +79,30 @@ void send_command(int server_sock)
     unsigned char instr_from_server[2];
     unsigned char instr_to_server[2];
     char c;
+    pthread_mutex_lock(&cmd_queue_m);
     if(cmd_tail == cmd_head) // caso in cui non ho comandi da eseguire
     {
+        pthread_mutex_unlock(&cmd_queue_m);
         // Torno ad aspettare che il server abbia qualcosa da fare
         return; 
     }
     c = cmd_queue[cmd_tail];
     cmd_tail = (cmd_tail + 1) % MAX_QUEUE_CMD;
+    pthread_mutex_unlock(&cmd_queue_m);
     LOG("main: comando arrivato: %c\n", c);
     switch(c)
     {
         case CMD_CREATE_CARD:
+
             pthread_mutex_lock(&created_m);
             printf("\n>> mandando card appena creata...\n");
-
             // posso mandare la card
             send_card(server_sock, created); // manda card al server
             free(created->desc); // libero la descrizione, anc'essa allocata nello heap
-
              // libero la card 
             free(created); 
             pthread_mutex_unlock(&created_m);
+
             printf("\n>> carta mandata!\n");
             int msglen = get_msg(server_sock, instr_from_server, 2);
             if(!msglen)
@@ -172,17 +183,18 @@ int main(int argc, char* argv[])
     srand(time(NULL));
     memset(cmd_queue, 0, MAX_QUEUE_CMD);
     short unsigned user_port;
-    pthread_mutex_init(&created_m, NULL);
     if(argc < 2)
     {
         err_args(argv[0]);
     }
     user_port = atoi(argv[1]);
-    pthread_t prompt_cycle;
     if(!user_port || user_port < 5679)
     {
         err_args(argv[0]);
     } 
+    pthread_mutex_init(&created_m, NULL);
+    pthread_mutex_init(&cmd_queue_m, NULL);
+    pthread_t prompt_cycle;
     sprintf(prompt_msg, "utente%u", user_port);
     if(argc != 3 || strcmp(argv[2], "-d"))// se gli argomenti non sono esattamente 2, e il secondo non è -d
     {
@@ -198,16 +210,21 @@ int main(int argc, char* argv[])
         close(logfile);
         fflush(stderr);
     }
-    printf(">> Registrazione al server con porta %u...\n", user_port);
+    printf("<< Registrazione al server con porta %u...\n", user_port);
     int server_sock = registra_utente(user_port);
     LOG( "do al socket timeout 1s in send\n");
-    if (setsockopt (server_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_recv, sizeof(timeout_recv)) < 0)
+    if (setsockopt (server_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_recv, sizeof(timeout_p2p)) < 0)
         ERR( "errore setsockopt\n");
     int self_info[2] = {user_port, server_sock};
 
     struct sockaddr_in listener_addr;
     int listener = init_listener(&listener_addr, user_port); // listener socket per interazione p2p
-
+    if (setsockopt (listener, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
+    {
+        ERR( "errore setsockopt\n");
+        printf("!< Errore: in caso di errori nell'asta e' "
+                "possibile che si blocchi completamente l'applicazione\n");
+    }
 
     pthread_create(&prompt_cycle, NULL, prompt_cycle_function, self_info);
     pthread_detach(prompt_cycle);
@@ -255,8 +272,7 @@ int main(int argc, char* argv[])
             LOG( "main, card arriva di dimensione %u\n", instr_from_server[1]);
             task_card_t *contended_card = recive_card(server_sock, (uint8_t)instr_from_server[1]);
 
-            LOG( "main, card ricevuta: \n");
-            show_card(contended_card);
+            LOG( "main, card ricevuta\n");
 
             // Mando ack per dire al server che ho ricevuto card e peers
             instr_to_server[0] = instr_to_server[1] = INSTR_ACK_PEERS; 

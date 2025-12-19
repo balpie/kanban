@@ -16,6 +16,7 @@ extern char cmd_queue[MAX_QUEUE_CMD];
 // quando la testa è subito dietro la coda, la lista è piena
 extern int cmd_head;
 extern int cmd_tail;
+extern pthread_mutex_t cmd_queue_m;
 
 // Carta creata dal prompt thread
 extern task_card_t *created;
@@ -37,7 +38,7 @@ void* prompt_cycle_function(void*);
 // CREATE_CARD:
 // Crea carta (con id, colonna, e descrizione prese da tastiera)
 task_card_t* create_card(); 
-  
+
 // connettiti ed effettua la registrazione al server
 int registra_utente(int);
 // SHOW_LAVAGNA:

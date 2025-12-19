@@ -40,11 +40,9 @@ void print_in_box(char* str, size_t size, char delimiter)
             {
                 putchar(*str);
                 str++;
+                continue;
             }
-            else
-            {
-                putchar(' ');
-            }
+            putchar(' ');
         }
         putchar('\n');
     }

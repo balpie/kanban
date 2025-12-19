@@ -207,8 +207,10 @@ void *prompt_cycle_function(void* self_info)
                         cmd_head, cmd_tail);
                 break;
         }   
+        pthread_mutex_lock(&cmd_queue_m);
         cmd_queue[cmd_head] = c;
         cmd_head = (cmd_head + 1) % MAX_QUEUE_CMD;
+        pthread_mutex_unlock(&cmd_queue_m);
     }
 }
 

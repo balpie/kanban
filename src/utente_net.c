@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-// TODO: rendi timed le cose in modo che se si disconnette un peer non blocca tutti.
-
 // implementazione parte p2p utente
 peer_list *recive_peer(int sock)
 {
@@ -55,7 +53,7 @@ void deallocate_list(peer_list** pl)
     {
         peer_list* tmp = *pl;
         pl = &((*pl)->next);
-        if(tmp->sock >= 0)
+        if(tmp->sock > 0)
         {
             LOG("deallocate_list: sto chiudendo fd %d\n", tmp->sock);
             close(tmp->sock);
@@ -99,6 +97,14 @@ int send_cost(peer_list* lst, uint8_t cost)
         {
             LOG("send_cost: apro socket per %u\n", lst->port);
             lst->sock = socket(AF_INET, SOCK_STREAM, 0);
+            if(setsockopt (lst->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
+            {
+                ERR( "errore setsockopt\n");
+            }
+            if(setsockopt (lst->sock, SOL_SOCKET, SO_SNDTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
+            {
+                ERR( "errore setsockopt\n");
+            }
             struct sockaddr_in addr_peer;
             memset(&addr_peer, 0, sizeof(addr_peer));
             addr_peer.sin_port = htons(lst->port);
@@ -109,13 +115,13 @@ int send_cost(peer_list* lst, uint8_t cost)
             // DEBUG
             char ip[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &addr_peer.sin_addr, ip, sizeof(ip));
-            LOG(
-            "connect -> %s:%u (raw addr=%u)\n",
-            ip, lst->port, lst->addr);
+            LOG("connect -> %s:%u (raw addr=%u)\n",
+                ip, lst->port, lst->addr);
             if(connect(lst->sock, (struct sockaddr*)&addr_peer, sizeof(addr_peer)))
             {
                 ERR("connect fallita\n\tport %u\taddr %u\n", lst->port, lst->addr);
                 perror("[err] send_cost: errore connect");
+                lst->sock = -1;
                 lst = lst->next;
                 continue;
             }
@@ -179,8 +185,24 @@ unsigned kanban_p2p_iteration(int sock, peer_list *list, peer_list* next,
                 "\n\tsocket connessione con %u non aperto\n",
                  next->port);
     }
+    // metto timer 3s al nuovo socket, in modo che se un altro peer 
+    // si disconnette non rimango in deadlock
+    if(setsockopt(next->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
+    {
+        ERR( "errore setsockopt\n");
+    }
+    if(setsockopt(next->sock, SOL_SOCKET, SO_SNDTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
+    {
+        ERR( "errore setsockopt\n");
+    }
+
     LOG("kanban_p2p: faccio la recv\n");
-    recv(next->sock, (void*)&curr_cost, 1, 0);
+    ssize_t msglen = recv(next->sock, (void*)&curr_cost, 1, 0);
+    if(msglen <= 0)
+    {
+        ERR("p2p: recv fallita\n");
+        return 0;
+    }
     LOG("kanban_p2p: ricevuto costo da %u: %u\n", next->port, curr_cost);
     if(curr_cost < curr_min_cost)
     {
