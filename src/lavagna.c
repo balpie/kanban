@@ -255,6 +255,8 @@ void disconnect_user(connection_l_e* connessione)
     if(changed)
     {
         show_lavagna(lavagna);
+        printf("\nlavagna> ");
+        fflush(stdout);
     }
     pthread_rwlock_unlock(&m_lavagna);
     // connessione terminata, termino thread
@@ -333,6 +335,7 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
             // mostro la lavagna a video visto che l'ho cambiata'
             show_lavagna(lavagna); 
             pthread_rwlock_unlock(&m_lavagna);
+            printf("\nlavagna> ");
         }
         else
         {
@@ -499,7 +502,6 @@ void* serv_client(void* cl_info)
             fflush(stdout);
             break;
         case INSTR_SHOW_LAVAGNA:
-            printf("\n<< Invia tutte le card della lavagna all'utente\n");
             pthread_rwlock_rdlock(&m_lavagna);
             send_lavagna(connessione->socket, lavagna);
             pthread_rwlock_unlock(&m_lavagna);
@@ -509,7 +511,7 @@ void* serv_client(void* cl_info)
         case INSTR_CARD_DONE:
             // TODO Finisci
             pthread_rwlock_wrlock(&m_lavagna);
-            LOG( " se esiste, metto la card dell'utente in done\n");
+            LOG("se esiste, metto la card dell'utente in done\n");
             lavagna_t* done_card = extract_from_lavagna(&lavagna, lavagna->card.id);
             if(done_card)
             {

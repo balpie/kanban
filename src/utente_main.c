@@ -16,6 +16,7 @@ char cmd_queue[MAX_QUEUE_CMD];
 int cmd_head = 0;
 int cmd_tail = 0;
 pthread_mutex_t cmd_queue_m;
+char user_prompt[13]; // Utentexxxxxx\0
 
 task_card_t *created = NULL;
 pthread_mutex_t created_m; 
@@ -117,7 +118,7 @@ void send_command(int server_sock)
             {
                 printf("\n>> carta non valida!\n");
             }
-            printf("utente> ");
+            printf("%s> ", user_prompt);
             fflush(stdout);
             break;
         case CMD_SHOW_LAVAGNA:
@@ -139,6 +140,8 @@ void send_command(int server_sock)
                 libera_lavagna(lavagna);
                 lavagna = NULL;
                 show_lavagna(lavagna);
+                printf("\n%s> ", user_prompt);
+                fflush(stdout);
                 break;
             }
             uint8_t count = instr_from_server[1];
@@ -159,6 +162,8 @@ void send_command(int server_sock)
                 free(cc);
             }
             show_lavagna(lavagna);
+            printf("\n%s> ", user_prompt);
+            fflush(stdout);
             libera_lavagna(lavagna);
             lavagna = NULL;
             break;
@@ -192,23 +197,33 @@ int main(int argc, char* argv[])
     {
         err_args(argv[0]);
     } 
+    sprintf(user_prompt, "utente%u", user_port);
     pthread_mutex_init(&created_m, NULL);
     pthread_mutex_init(&cmd_queue_m, NULL);
     pthread_t prompt_cycle;
     sprintf(prompt_msg, "utente%u", user_port);
     if(argc != 3 || strcmp(argv[2], "-d"))// se gli argomenti non sono esattamente 2, e il secondo non è -d
     {
-        // TODO error check
         // redirigo i messaggi di errore a un file
         printf(">> Redirigo stderr a un file\n");
         // nome log file di dimensione strlen(prefisso) + (massimo numero cifre uint16_t) + '\0'
         char logfilename[sizeof(COMMON_LOGFILE_NAME) + 6];
         sprintf(logfilename, "%s%u", COMMON_LOGFILE_NAME, user_port);
         int logfile = open(logfilename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        dup2(logfile, STDERR_FILENO); // associo stderr al logfile
+        if(logfile < 0)
+        {
+            printf(">! errore open logfile%s\n", logfilename);
+        }
+        if(dup2(logfile, STDERR_FILENO) < 0) // associo stderr al logfile
+        {
+            printf(">! errore ridirezione stderr\n");
+        }
         LOG( "sto per chidere fd: %d\n", logfile);
-        close(logfile);
-        fflush(stderr);
+        if(close(logfile))
+        {
+            printf(">! errore close\n");
+        }
+        fflush(stderr); 
     }
     printf("<< Registrazione al server con porta %u...\n", user_port);
     int server_sock = registra_utente(user_port);
@@ -269,14 +284,14 @@ int main(int argc, char* argv[])
             {
                 disconnect(server_sock);
             }
-            LOG( "main, card arriva di dimensione %u\n", instr_from_server[1]);
+            LOG("main, card arriva di dimensione %u\n", instr_from_server[1]);
             task_card_t *contended_card = recive_card(server_sock, (uint8_t)instr_from_server[1]);
 
-            LOG( "main, card ricevuta\n");
+            LOG("main, card ricevuta\n");
 
             // Mando ack per dire al server che ho ricevuto card e peers
             instr_to_server[0] = instr_to_server[1] = INSTR_ACK_PEERS; 
-            LOG( "mando ack al server\n");
+            LOG("mando ack al server\n");
             send_msg(server_sock, instr_to_server, 2);
 
             // Aspetto che tutti i client siano pronti
@@ -298,13 +313,15 @@ int main(int argc, char* argv[])
             {
                 p = p->next;
             }
-            LOG( "mando porta vincitore, tale: %u\n", winner);
+            LOG("mando porta vincitore, tale: %u\n", winner);
             uint16_t network_winner = htons(winner);
 
-            LOG( "user_port %u\twinner %u\n", user_port ,winner);
+            LOG("user_port %u\twinner %u\n", user_port ,winner);
             if(winner == user_port)
             {
-                printf(">> Ho proposto il costo minore, quindi mi prendo la card\n");
+                printf(">> Ho proposto il costo minore, quindi mi prendo la card\n%s>"
+                        , user_prompt);
+                fflush(stdout);
                 insert_into_lavagna(&doing, contended_card);
             }
             free(contended_card);
@@ -314,8 +331,8 @@ int main(int argc, char* argv[])
             continue;
         }
         if(instr_from_server[0] == INSTR_PING)
-        { // se mi arriva ping mando pong // TODO test
-            instr_to_server[0] = INSTR_PING;
+        { 
+            instr_to_server[0] = INSTR_PONG;
             //TST("Faccio arrivare apposta in ritardo il pong\n");
             //sleep(2); 
             send_msg(server_sock, instr_to_server, 2);

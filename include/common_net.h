@@ -19,6 +19,7 @@
                                 // l'interazione di tipo p2p, in quanto hanno tutti ricevuto e acked 
                                 // le loro cose
 #define INSTR_PING '@'
+#define INSTR_PONG INSTR_PING
 
 // ISTRUZIONI DAL CLIENT
 #define INSTR_NEW_CARD '6' // il successivo byte ricevuto è la dimensione della card che verrà 

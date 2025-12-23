@@ -55,8 +55,6 @@ int registra_utente(int port)
     return sd;
 }
 
-// FIXME Quando fai ctrl-d in mezzo a una stringa 
-// da sigsev 
 char* get_desc(char* buf)
 {
     int count = 0;
@@ -194,6 +192,8 @@ void *prompt_cycle_function(void* self_info)
                 if(!pthread_mutex_trylock(&created_m))
                 {
                     created = create_card();  // crea card
+                    printf("\n%s> ", user_prompt);
+                    fflush(stdout);
                     pthread_mutex_unlock(&created_m);
                 }
                 else
