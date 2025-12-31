@@ -23,10 +23,6 @@ struct timeval timeout_recv = {
 
 int main(int argc, char *argv[]) // main thread: listener
 {
-
-    // uso lazy eval: se ho un argomento solo passo avanti, 
-    // in caso contrario se il primo argomento non è -d 
-    // scrivo i commmenti in un log file
     if(argc < 2 || strcmp(argv[1], "-d")) 
     {
         int logfile = open(LOGFILE_NAME, O_WRONLY | O_CREAT | O_TRUNC, 0644);

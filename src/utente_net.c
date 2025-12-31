@@ -7,26 +7,34 @@
 // implementazione parte p2p utente
 peer_list *recive_peer(int sock)
 {
-    unsigned char buf[6];
+    unsigned char buf[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    // Metto un valore fantoccio in caso fallimento recv peer
+    uint16_t *dummy_port = (uint16_t *) &buf[0];
+    uint32_t *dummy_addr = (uint32_t *) &buf[2];
+    *dummy_port = NO_USR;
+    *dummy_addr = 0;
     
     int msglen;
-    unsigned attempts = 0;
-    while((msglen = get_msg(sock, buf, 6)) < 0)
+    if((msglen = get_msg(sock, buf, 6)) < 0)
     {
-        LOG("recive_peer: ricezione peer fallita, riprovo (%u)\n", ++attempts);
+        ERR("recive_peer: ricezione peer fallita\n");
+        return NULL;
     }
+    DBG("Arrivato peer, port: 0x%X, addr: 0x%X"
+            , *dummy_port, *dummy_addr);
     if(!msglen) // Connessione chiusa
     {
-        LOG("recive_peer: lavagna ha chiuso la connessione");
-        return NULL;
+        ERR("recive_peer: lavagna ha chiuso la connessione\n");
+    }
+    if(msglen < 0)
+    {
+        ERR("recive_peer ricezione time out\n");
     }
     peer_list* new = (peer_list*)malloc(sizeof(peer_list));
     memcpy(&new->port, &buf[0], 2);
     memcpy(&new->addr, &buf[2], 4);
-
     new->addr = ntohl(new->addr);
     new->port = ntohs(new->port);
-
     new->next = NULL;
     return new;
 }
@@ -68,7 +76,7 @@ void print_peers(peer_list* list)
     while(list)
     {
         cont++;
-        LOG("print_peers: -%d- addr %u\tport %u\n", cont, list->addr, list->port);
+        LOG("print_peers: -%d- addr 0x%X\tport %u\n", cont, list->addr, list->port);
         list = list->next;
     }
 }
@@ -99,11 +107,11 @@ int send_cost(peer_list* lst, uint8_t cost)
             lst->sock = socket(AF_INET, SOCK_STREAM, 0);
             if(setsockopt (lst->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
             {
-                ERR( "errore setsockopt\n");
+                ERR("errore setsockopt\n");
             }
             if(setsockopt (lst->sock, SOL_SOCKET, SO_SNDTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
             {
-                ERR( "errore setsockopt\n");
+                ERR("errore setsockopt\n");
             }
             struct sockaddr_in addr_peer;
             memset(&addr_peer, 0, sizeof(addr_peer));
@@ -187,14 +195,15 @@ unsigned kanban_p2p_iteration(int sock, peer_list *list, peer_list* next,
     }
     // metto timer 3s al nuovo socket, in modo che se un altro peer 
     // si disconnette non rimango in deadlock
-    if(setsockopt(next->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
-    {
-        ERR( "errore setsockopt\n");
-    }
-    if(setsockopt(next->sock, SOL_SOCKET, SO_SNDTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
-    {
-        ERR( "errore setsockopt\n");
-    }
+    // FIXME ???
+    //if(setsockopt(next->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
+    //{
+    //    ERR( "errore setsockopt\n");
+    //}
+    //if(setsockopt(next->sock, SOL_SOCKET, SO_SNDTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
+    //{
+    //    ERR( "errore setsockopt\n");
+    //}
 
     LOG("kanban_p2p: faccio la recv\n");
     ssize_t msglen = recv(next->sock, (void*)&curr_cost, 1, 0);

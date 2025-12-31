@@ -56,6 +56,8 @@ int send_msg(int sock, void* msg, size_t size)
             perror("\n>! Errore send");
             return 0;
         }
+        if(sent < size)
+            ERR("send_msg: sent < size\n");
     }while(sent < size);
     return 1;
 }
@@ -72,7 +74,7 @@ int init_listener(struct sockaddr_in* server_addr, uint16_t port)
     server_addr->sin_addr.s_addr = INADDR_ANY;
     server_addr->sin_family = AF_INET;
     server_addr->sin_port = htons(port);
-    ERR("init_listener: inizializzo listener con porta: %d\n", port);
+    LOG("init_listener: inizializzo listener con porta: %d\n", port);
     if(bind(listener, (struct sockaddr*)server_addr, sizeof(*server_addr)) < 0)
     {
         ERR("init_listener errore bind");
@@ -95,13 +97,13 @@ int get_msg(int sock, void *buf, size_t size)
     ssize_t recived = 0;
     do
     {
-        ssize_t offs = recv(sock,(char*) buf, size - recived, 0);
-        recived+=offs;
-        if(recived == 0)
+        int offs = recv(sock,(char*) buf + recived, size - recived, 0);
+        recived += offs;
+        if(offs == 0)
         {
             return RTR_CONN_CLOSE;
         }
-        if(recived < 0)
+        if(offs < 0)
         {
             if(errno == EWOULDBLOCK)
             {
@@ -116,18 +118,20 @@ int get_msg(int sock, void *buf, size_t size)
 
 int send_card(int socket, task_card_t *cc)
 {
-    LOG("send_card: sizeof net_card = "
-            "\nsizeof(*cc) - sizeof(cc->desc) + strlen(cc->desc) = "
-            "\n%lu - %lu + %lu", sizeof(*cc), sizeof(cc->desc), strlen(cc->desc));
     size_t net_card = sizeof(*cc) - sizeof(cc->desc) + strlen(cc->desc);
     char buffer[net_card]; 
     unsigned dim = prepare_card(cc, buffer);
     char instr_to_server[2]; 
     instr_to_server[0] = INSTR_NEW_CARD;
     instr_to_server[1] = strlen(cc->desc);
-    send_msg(socket, instr_to_server, 2);
-    send_msg(socket, buffer, dim + sizeof(*cc) - sizeof(cc->desc));
-    return 1; // TODO error handling
+    unsigned msglen = send_msg(socket, instr_to_server, 2);
+    unsigned failed = 0;
+    if(msglen == 0)
+        failed = 1;
+    msglen = send_msg(socket, buffer, dim + sizeof(*cc) - sizeof(cc->desc));
+    if(!msglen || failed)
+        return 0;
+    return 1; 
 }
 
 task_card_t* recive_card(int socket, size_t dim_desc_card)

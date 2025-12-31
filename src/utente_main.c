@@ -54,13 +54,13 @@ void get_peers(peer_list **peers, int server_sock, unsigned char instr_from_serv
         peer_list *pp = recive_peer(server_sock);
         if(pp)
         {
-            LOG( "chiamo insert_peer su \n\taddr: %u\n\tport: %u\n", 
+            LOG("chiamo insert_peer su \n\taddr: %u\n\tport: %u\n", 
                     pp->addr, pp->port);
             insert_peer(peers, pp);
         }
         else
         {
-            LOG("get_peers: connessione chiusa\n");
+            ERR("get_peers: peer non ricevuto correttamente o connessione chiusa\n");
             disconnect(server_sock);
         }
     }
@@ -129,7 +129,7 @@ void send_command(int server_sock)
             // Comunico il mio intento al server
             instr_to_server[0] = INSTR_SHOW_LAVAGNA;
             send_msg(server_sock, instr_to_server, 2);
-            LOG( "[dbg]: mi faccio dire da lavagna quante card ho da ricevere\n");
+            LOG("[dbg]: mi faccio dire da lavagna quante card ho da ricevere\n");
             msglen = get_msg(server_sock, instr_from_server, 2);
             if(!msglen)
             {
@@ -265,7 +265,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        LOG("main: msglen %d", msglen); 
+        LOG("main: msglen %d\n", msglen); 
         if(instr_from_server[0] != old_instr_from_server)
         {
             LOG("main: Ricevuto da server %u\n", instr_from_server[0]);
@@ -317,7 +317,7 @@ int main(int argc, char* argv[])
             uint16_t network_winner = htons(winner);
 
             LOG("user_port %u\twinner %u\n", user_port ,winner);
-            if(winner == user_port)
+            if(winner == user_port) 
             {
                 printf(">> Ho proposto il costo minore, quindi mi prendo la card\n%s>"
                         , user_prompt);

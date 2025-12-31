@@ -104,7 +104,7 @@ connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checkin
 
 void send_lavagna(int sock ,lavagna_t *lavagna)
 {
-    LOG( " send_lavagna\n");
+    LOG("send_lavagna\n");
     // conto numero di cards
     lavagna_t *p = lavagna;
     uint8_t count = 0;
@@ -122,12 +122,16 @@ void send_lavagna(int sock ,lavagna_t *lavagna)
     }
     instr_to_client[0] = INSTR_SHOW_LAVAGNA;
     instr_to_client[1] = count;
-    LOG( " send_lavagna, \n\tcount: %d\n", instr_to_client[1]);
+    LOG("send_lavagna, \n\tcount: %d\n", instr_to_client[1]);
     send_msg(sock, instr_to_client, 2); // invio la quantità di card
     p = lavagna;
     for(uint8_t i = 0; i < count; i++)
     {
-        send_card(sock, &p->card);
+        
+        if(!send_card(sock, &p->card))
+        {
+            ERR("show_lavagna: send_card fallita\n");
+        }
         p = p->next;
     }
 }
@@ -274,18 +278,22 @@ void send_p2p_info(connection_l_e *connessione)
     // dico al client che una card è avaliable, e gli dico il numero di peer che avrà
     send_msg(connessione->socket, instr_to_client, 2); 
     // mando la lista di tutti tranne se 
-    LOG("send_p2p_info: mando %u connessioni\n", instr_to_client[1]);
+    LOG("send_p2p_info(%u): mando %u connessioni\n", connessione->port_id, instr_to_client[1]);
     send_conn_list(connessione->socket, connessione, status.total - 1);
     // mando la card, che è la prima di lavagna
-    LOG("send_p2p_info: mando la card\n");
+    LOG("send_p2p_info(%u): mando la card\n", connessione->port_id);
     send_card(connessione->socket, &lavagna->card);
     // aspetto su conditional variable di stato che tutti i thread abbiano mandato 
     // card e connessioni al proprio utente
-    LOG("send_p2p_info: ricevo ack\n");
+    LOG("send_p2p_info(%u): ricevo ack\n", connessione->port_id);
     if(!get_msg(connessione->socket, instr_from_client, 2)) // if !get_msg then disconnect_user(connessione)
     {
         // visto che il thread è della connessione, la funzione sotto termina il thread
         disconnect_user(connessione);
+    }
+    if(get_msg < 0)
+    {
+        ERR("%u) Messaggio di ack peers non arrivato\n", connessione->port_id);
     }
 
     // assumo sia un ack perchè non mi può mandare altro
@@ -293,7 +301,7 @@ void send_p2p_info(connection_l_e *connessione)
     status.sent++;
 
     pthread_mutex_lock(&status.m);
-    LOG( " send_p2p_info: total %u\tsent %u\n", status.total, status.sent);
+    LOG("send_p2p_info: total %u\tsent %u\n", status.total, status.sent);
     while(status.total != status.sent)
     {
         pthread_cond_wait(&status.cv, &status.m);
@@ -319,7 +327,7 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
     uint16_t winner;
     memcpy((void*)&winner, instr_from_client, 2);
     winner = ntohs(winner); 
-    LOG( " serv_client: La task va a: %u\n", winner);
+    LOG("recv_p2p_result: La task va a: %u\n", winner);
 
     pthread_mutex_lock(&status.m);
     if(++status.winner_arrived == status.total)
@@ -327,7 +335,7 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
         if(VALID_PORT(winner))
         {
             pthread_rwlock_wrlock(&m_lavagna);
-            LOG("serv_client: preso lock lavagna, setto effettivamente winner: %d\n", winner);
+            LOG("recv_p2p_result: preso lock lavagna, setto effettivamente winner: %d\n", winner);
             lavagna_t* contended = extract_from_lavagna(&lavagna, lavagna->card.id);
             contended->card.colonna = DOING_COL;
             contended->card.utente = winner;
@@ -339,7 +347,7 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
         }
         else
         {
-            ERR("serv_client: fallimento asta, winner (%u) non valido \n", winner);
+            ERR("recv_p2p_result: fallimento asta, winner (%u) non valido \n", winner);
         }
         
         // A questo punto devo disfare le cose di status
@@ -436,7 +444,7 @@ void* serv_client(void* cl_info)
                 continue;
             }
             else // se il thread ha già mandato, aspetta mezzo secondo
-            {
+            {   //FIXME
                 usleep(500000); 
                 continue;
             }

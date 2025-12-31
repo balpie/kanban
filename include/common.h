@@ -38,9 +38,13 @@
 // esprimere la dimensione dei messaggi con un singolo byte
 
 // error logs
-#define LOG(...) fprintf(stderr, "[dbg] " __VA_ARGS__)
-#define ERR(...) fprintf(stderr, "[err] " __VA_ARGS__)
-#define TST(...) fprintf(stderr, "[tst] " __VA_ARGS__)
+#define LOG(...) fprintf(stderr, "[log] " __VA_ARGS__)
+// Log di errore di colore rosso su terminale
+#define ERR(fmt, ...) fprintf(stderr, "\033[31;10;10m[err] "fmt"\033[0m", ##__VA_ARGS__)
+// stampe debug di colore blu su terminale
+#define DBG(fmt, ...) fprintf(stderr, "\033[34;10;10m[dbg] "fmt"\033[0m", ##__VA_ARGS__)
+// Stampe test di colore verde su terminale
+#define TST(fmt, ...) fprintf(stderr, "\033[32;10;10m[log] "fmt"\033[0m", ##__VA_ARGS__)
 // Utility
 #define VALID_PORT(pp) ((pp > 5678) ? (1) : (0))
 
