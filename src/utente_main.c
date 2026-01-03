@@ -174,7 +174,7 @@ void send_command(int server_sock)
             if(!card_done(server_sock, &doing))
             {
                 printf("\n>! nessuna carta in doing\n");
-                printf("%s", user_prompt);
+                printf("%s> ", user_prompt);
                 fflush(stdout);
             }
             break;

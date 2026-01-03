@@ -11,7 +11,7 @@
 
 // Tempo in cui una carta rimane in doing in secondi.
 // Una volta scaduto la card viene mandata come done a lavagna
-#define MAX_TIME_DOING 5
+#define MAX_TIME_DOING 50
   
 // Coda circolare dei comandi da eseguire
 extern char cmd_queue[MAX_QUEUE_CMD];

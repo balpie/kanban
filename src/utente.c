@@ -160,7 +160,7 @@ int get_col()
     return buf[0] - '0';
 }
 
-// Ritorna 1 in caso di successo, 0 altrimenti
+// Ritorna la card in caso di successo, 0 altrimenti
 task_card_t *create_card()
 {
     task_card_t *new_card = (task_card_t*)malloc(sizeof(task_card_t));
@@ -172,7 +172,6 @@ task_card_t *create_card()
         free(new_card);
         return NULL;
     }
-
     char* endlptr = strchr(buf, '\n');
     if(!endlptr)
     { 
@@ -189,6 +188,28 @@ task_card_t *create_card()
         free(new_card);
         return NULL;
     }
+    if(new_card->colonna != DONE_COL)
+    {
+        // ancora non è assegnata a nessun utente
+        new_card->utente = NO_USR; 
+    }
+    else
+    {
+        // 5 cifre base 10 per la porta, 1 per \n
+        printf("<< inserire porta dell'utente (5679 <= id < 65536): ");
+        fgets(buf, 6, stdin);
+        new_card->utente = strtoul(buf, NULL, 10); 
+        if(new_card->utente == 0 || !VALID_PORT(new_card->utente))
+        {
+            new_card->utente = NO_USR;
+        }
+        char* endlptr = strchr(buf, '\n');
+        if(!endlptr)
+        { 
+            clear_stdin_buffer();
+        }
+    }
+
     new_card->last_modified = time(NULL);
     new_card->desc = get_desc(buf);
     if(!new_card->desc)
@@ -196,7 +217,6 @@ task_card_t *create_card()
         free(new_card);
         return NULL;
     }
-    new_card->utente = NO_USR; // ancora non è assegnata a nessun utente
     return new_card;
 }
 

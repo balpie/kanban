@@ -494,12 +494,13 @@ void* serv_client(void* cl_info)
         {
         case INSTR_NEW_CARD:
             task_card_t *card = recive_card(connessione->socket, (size_t)instr_from_client[1]);
+            // Nel caso in cui ci sia già una card presente con quell'id
             if(get_card(card->id))
             {
                 // Comunico al client l'inserimento non riuscito
                 instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN;
                 send_msg(connessione->socket, instr_to_client, 2);
-                LOG( " serv_client id card ricevuta già presente\n");
+                LOG("serv_client id card ricevuta già presente\n");
                 free(card);
                 break;
             }
