@@ -48,6 +48,8 @@ void* prompt_cycle(void *arg)
     exit(0);
 }
 
+// Ritorna la card con identificatore id.
+// Se non presente ritorna NULL
 lavagna_t* get_card(uint8_t id)
 {
     lavagna_t* p = lavagna;
@@ -62,6 +64,8 @@ lavagna_t* get_card(uint8_t id)
     return NULL;
 }
 
+// Ritorna la connessione dell'utente identificato da 
+// port. Se non presente ritorna NULL
 connection_l_e* get_connection(uint16_t port)
 {
     connection_l_e* p = lista_connessioni.head;
@@ -76,6 +80,8 @@ connection_l_e* get_connection(uint16_t port)
     return NULL;
 }
 
+// Effettua la registrazione del client, se ha una porta valida, 
+// non ancora presa da altri client
 connection_l_e* registra_client(int socket, uint32_t addr) 
 {
     char instr_to_client[2];
@@ -90,28 +96,32 @@ connection_l_e* registra_client(int socket, uint32_t addr)
         return NULL;
     }
     pthread_mutex_lock(&lista_connessioni.m);
-    if(get_connection(ntohs(port))) // se c'è già un utente con tale id
+    // se c'è già un utente con tale id gli comunico che l'iscrizione non è andata a buon fine
+    if(get_connection(ntohs(port))) 
     {
         pthread_mutex_unlock(&lista_connessioni.m);
-        instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN; // Comunico al client che la registrazione
-                                                               // non è andata a buon fine
+        instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN; 
         send_msg(socket, instr_to_client, 2);
         close(socket);
         return NULL;
     }
-    instr_to_client[0] = instr_to_client[1] = INSTR_ACK; // Comunico al client che la registrazione è 
-                                                         // andata a buon fine
+    // Comunico al client che l'iscrizione è andata a buon fine
+    instr_to_client[0] = instr_to_client[1] = INSTR_ACK; 
     send_msg(socket, instr_to_client, 2);
     connection_l_e* conn = insert_connection(&(lista_connessioni.head), socket, ntohs(port), ntohl(addr)); 
     pthread_mutex_unlock(&lista_connessioni.m);
+
+    pthread_mutex_lock(&status.m);
     status.n_connessioni++;
-    return conn; // assumo successo
+    pthread_mutex_unlock(&status.m);
+    return conn; 
 }
 
-void send_lavagna(int sock ,lavagna_t *lavagna)
+// Manda via sock tutte le card della lavagna 
+void send_lavagna(int sock, lavagna_t *lavagna)
 {
     LOG("send_lavagna\n");
-    // conto numero di cards
+    // conto numero di card
     lavagna_t *p = lavagna;
     uint8_t count = 0;
     while(p)
@@ -144,13 +154,18 @@ void send_lavagna(int sock ,lavagna_t *lavagna)
 
 // Viene passato aquired, ovvero il tempo trascorso
 // dall'ultima volta che l'utente ha acquisito una card in doing
+// La funzione valuta l'attuale stato del server
 uint8_t eval_status(time_t aquired)
 {
     // Ordine locking: prima status, poi connessioni, poi lavagna
+    // rispettando questo ordine evito il rischio di deadlock
     if(aquired && (time(NULL) - aquired > TIME_PING))
     {
-        return INSTR_PING;
+        // Se è passato più di TIME_PING il thread deve mandare il ping alla
+        // propria connessione
+        return INSTR_PING; 
     }
+    DBG("lock status\n");
     pthread_mutex_lock(&status.m);
     // Se lo stato è già questo, c'è già una avaliable card che sta essendo processata
     if(status.status == INSTR_AVAL_CARD)
@@ -158,6 +173,7 @@ uint8_t eval_status(time_t aquired)
         pthread_mutex_unlock(&status.m);
         return INSTR_AVAL_CARD;
     }
+    pthread_mutex_lock(&lista_connessioni.m);
     pthread_rwlock_rdlock(&m_lavagna);
     // altrimenti si valuta se è presente una card assegnabile
     if(lavagna && lavagna->card.colonna == TODO_COL)
@@ -182,12 +198,14 @@ uint8_t eval_status(time_t aquired)
             // setto lo status a INSTR_AVAL_CARD, e successivamente
             // comunico ai client che devono fare l'asta
             status.status = INSTR_AVAL_CARD;
-            pthread_mutex_unlock(&status.m);
             pthread_rwlock_unlock(&m_lavagna);
+            pthread_mutex_unlock(&lista_connessioni.m);
+            pthread_mutex_unlock(&status.m);
             return INSTR_AVAL_CARD;
         }
     }
     pthread_mutex_unlock(&status.m);
+    pthread_mutex_unlock(&lista_connessioni.m);
     pthread_rwlock_unlock(&m_lavagna);
     // altrimenti lo status rimane invariato
     return status.status; 
@@ -453,8 +471,9 @@ void* serv_client(void* cl_info)
                 LOG("serv_client(%u) rimetto sent a 0\n", connessione->port_id);
                 continue;
             }
-            else // se il thread ha già mandato, aspetta mezzo secondo
-            {   //FIXME
+            else 
+            {   
+                ERR("condizione inaspettata\n");
                 usleep(500000); 
                 continue;
             }
@@ -480,17 +499,19 @@ void* serv_client(void* cl_info)
         }
         if(instr_to_client[0] != INSTR_NOP)
             send_msg(connessione->socket, instr_to_client, 2);
-            // passo al client la possibilità di decidere che fare  
+        // passo al client la possibilità di decidere che fare  
         int msg_width = get_msg(connessione->socket, instr_from_client, 2);
         if(!msg_width) 
         { // caso connessione chiusa
             disconnect_user(connessione);
         }
-        if(msg_width < 0) // caso INSTR_NOP arrivato dal client
+        // caso INSTR_NOP arrivato dal client
+        if(msg_width < 0) 
         {
             continue;
         }
-        switch(instr_from_client[0]) // in base a cosa vuole fare il client lo servo...
+        // in base a cosa vuole fare il client lo servo...
+        switch(instr_from_client[0]) 
         {
         case INSTR_NEW_CARD:
             task_card_t *card = recive_card(connessione->socket, (size_t)instr_from_client[1]);
@@ -509,9 +530,9 @@ void* serv_client(void* cl_info)
             send_msg(connessione->socket, instr_to_client, 2);
 
             pthread_rwlock_wrlock(&m_lavagna);
-            insert_into_lavagna(&lavagna, card); // salva la descrizione nella lista
+            // salva la descrizione nella lista
+            insert_into_lavagna(&lavagna, card); 
             pthread_rwlock_unlock(&m_lavagna);
-
             free(card); 
 
             pthread_rwlock_rdlock(&m_lavagna);
