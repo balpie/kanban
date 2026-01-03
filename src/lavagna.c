@@ -157,15 +157,16 @@ void send_lavagna(int sock, lavagna_t *lavagna)
 // La funzione valuta l'attuale stato del server
 uint8_t eval_status(time_t aquired)
 {
-    // Ordine locking: prima status, poi connessioni, poi lavagna
-    // rispettando questo ordine evito il rischio di deadlock
+    // Ordine locking: per evitare deadlock: status->connessioni->lavagna
+    // Ordine rilascio locking: lavagna->connessioni->status
     if(aquired && (time(NULL) - aquired > TIME_PING))
     {
         // Se è passato più di TIME_PING il thread deve mandare il ping alla
         // propria connessione
+        // questo valore non viene assegnato alla variabile status in quanto
+        // è valido solo per il thread chiamante
         return INSTR_PING; 
     }
-    DBG("lock status\n");
     pthread_mutex_lock(&status.m);
     // Se lo stato è già questo, c'è già una avaliable card che sta essendo processata
     if(status.status == INSTR_AVAL_CARD)
@@ -227,8 +228,8 @@ void insert_lavagna_elem(lavagna_t** lp, lavagna_t*elem)
         prec = iter;
         iter = iter->next;
     }
-    if(!prec) // inserimento in testa
-    {
+    if(!prec) 
+    {// inserimento in testa
         elem->next = iter;
         *lp = elem;
         return;
@@ -281,6 +282,7 @@ void disconnect_user(connection_l_e* connessione)
         }
         pl = pl->next;
     }
+    // Se la lavagna ha subito modifiche la mostro a schermo
     if(changed)
     {
         show_lavagna(lavagna);
@@ -311,31 +313,33 @@ void send_p2p_info(connection_l_e *connessione)
     // aspetto su conditional variable di stato che tutti i thread abbiano mandato 
     // card e connessioni al proprio utente
     LOG("send_p2p_info(%u): ricevo ack\n", connessione->port_id);
-    if(!get_msg(connessione->socket, instr_from_client, 2)) // if !get_msg then disconnect_user(connessione)
+    int msglen = get_msg(connessione->socket, instr_from_client, 2);
+    // Caso connessione chiusa
+    if(!msglen) 
     {
-        // visto che il thread è della connessione, la funzione sotto termina il thread
         disconnect_user(connessione);
     }
-    if(get_msg < 0)
+    // Il client ha tardato a rispondere (non dovrebbe succedere) 
+    if(msglen < 0)
     {
         ERR("%u) Messaggio di ack peers non arrivato\n", connessione->port_id);
     }
-
-    // assumo sia un ack perchè non mi può mandare altro
-    // Ora che so che il mio client ha ricevuto card e cose 
-    status.sent++;
+    // Assumo sia un ack perchè non mi può mandare altro
 
     pthread_mutex_lock(&status.m);
+    status.sent++;
     LOG("send_p2p_info: total %u\tsent %u\n", status.total, status.sent);
+    // Condition variable per sincronizzare tutti i client
     while(status.total != status.sent)
     {
         pthread_cond_wait(&status.cv, &status.m);
     }
     // sveglio gli altri...
     pthread_cond_broadcast(&status.cv);
-    instr_to_client[0] = instr_to_client[1] = INSTR_CLIENTS_READY;
-    // Qui dico all'utente che può mandare le cose agli altri, visto che
+
+    // dico all'utente che può mandare le cose agli altri, visto che
     // hanno ricevuto dati su altri client e card
+    instr_to_client[0] = instr_to_client[1] = INSTR_CLIENTS_READY;
     send_msg(connessione->socket, instr_to_client, 2);
     pthread_mutex_unlock(&status.m);
 }
@@ -344,17 +348,27 @@ void send_p2p_info(connection_l_e *connessione)
 // status e inserisci nella lavagna. Ritorna il vincitore dell'asta
 uint16_t recv_p2p_result(connection_l_e* connessione)
 {
-    unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
-    if (!get_msg(connessione->socket, instr_from_client, 2)) // if !get_msg then disconnect_user(connessione)
+    // messaggio di istruzioni da ricevere dal client
+    unsigned char instr_from_client[2]; 
+    // caso disconnessione utente durante l'asta
+    if(!get_msg(connessione->socket, instr_from_client, 2)) 
     {
-        disconnect_user(connessione);
+        pthread_mutex_lock(&status.m);
+        status.total--;
+        pthread_mutex_unlock(&status.m);
+        // La funzione termina il thread
+        disconnect_user(connessione); 
     }
     uint16_t winner;
+    // Il prossimo messaggio è il vincitore
     memcpy((void*)&winner, instr_from_client, 2);
     winner = ntohs(winner); 
     LOG("recv_p2p_result: La task va a: %u\n", winner);
 
     pthread_mutex_lock(&status.m);
+    // Se mi è arrivato il risultato dall'ultimo client, 
+    // ed il risultato è valido, ripulisco connessioni e status, 
+    // e aggiorno e mostro la lavagna a video
     if(++status.winner_arrived == status.total)
     {
         if(VALID_PORT(winner))
@@ -367,7 +381,7 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
             contended->card.last_modified = time(NULL);
 
             insert_lavagna_elem(&lavagna, contended);
-            // mostro la lavagna a video visto che l'ho cambiata'
+            // mostro la lavagna a video visto che l'ho cambiata
             show_lavagna(lavagna); 
             pthread_rwlock_unlock(&m_lavagna);
             printf("\nlavagna> ");
@@ -377,7 +391,6 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
         {
             ERR("recv_p2p_result: fallimento asta, winner (%u) non valido \n", winner);
         }
-        
         // A questo punto devo disfare le cose di status
         // ordine lock: status, connessioni, lavagna
         if(status.total != 0)
@@ -401,7 +414,7 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
     return winner;
 }
 
-// ritorna l'id della card in doing dell'utente port, -1 se non presente'
+// ritorna l'id della card in doing dell'utente port, -1 se non presente
 int get_doing_card_id(uint16_t port)
 {
     lavagna_t *p = lavagna;
@@ -416,6 +429,7 @@ int get_doing_card_id(uint16_t port)
     return -1;
 }
 
+// funzionoe del thread principale per la gestione della comunicazione c-s
 void* serv_client(void* cl_info) 
 {
     // socket   
@@ -427,9 +441,13 @@ void* serv_client(void* cl_info)
     {
         pthread_exit(NULL);
     }
-    unsigned char instr_to_client[2]; // messaggio di istruzioni da mandare al client
-    unsigned char instr_from_client[2]; // messaggio di istruzioni da ricevere dal client
-    int sent = 0; // variabile che indica se ho già mandato la card e le info in caso di ciclo p2p
+    // messaggio di istruzioni da mandare al client
+    unsigned char instr_to_client[2]; 
+    // messaggio di istruzioni da ricevere dal client
+    unsigned char instr_from_client[2]; 
+    // variabile che indica se ho già mandato la card e le info in caso di ciclo p2p
+    int sent = 0; 
+    // timestamp in cui la mia connessione ha acquisito l'ultima card che ha in doing
     time_t aquired = 0;
 
     unsigned char old_instr_to_client = INSTR_NOP;
@@ -473,7 +491,6 @@ void* serv_client(void* cl_info)
             }
             else 
             {   
-                ERR("condizione inaspettata\n");
                 usleep(500000); 
                 continue;
             }
@@ -481,7 +498,7 @@ void* serv_client(void* cl_info)
         if(instr_to_client[0] == INSTR_PING)
         {
             send_msg(connessione->socket, instr_to_client, 2);
-            LOG(" serv_client(%u): mando ping\n"
+            LOG("serv_client(%u): mando ping\n"
                     "\tmi aspetto risposta entro %u\n"
                     ,connessione->port_id, TIME_PONG_MAX_DELAY);
             setsockopt(connessione->socket, SOL_SOCKET, SO_RCVTIMEO, &timeout_pong, sizeof(timeout_pong));
@@ -572,9 +589,19 @@ void* serv_client(void* cl_info)
     return NULL;
 }
 
+// Stampa utenti connessi e informazioni riguardo lo stato attuale della lavagna
 void stampa_utenti_connessi(connection_l_e *head)
 {
     int count = 0;
+    printf("<< status attuale: ");
+    // Lo stato può soltanto essere nulla da fare o carta disponibile
+    switch(status.status)
+    {
+        case INSTR_NOP:
+            printf("niente da fare\n");
+        case INSTR_AVAL_CARD:
+            printf("card disponibile per asta\n");
+    }
     printf("<< ci sono %d utenti connessi in totale: \n", status.n_connessioni);
     while(head!= NULL)
     {
