@@ -4,11 +4,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
-// implementazione parte p2p utente
+// Ricezione via socket di un singolo peer.
 peer_list *recive_peer(int sock)
 {
-    unsigned char buf[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    // Metto un valore fantoccio in caso fallimento recv peer
+    // Metto un valore fantoccio in caso fallimento recv peer, 
+    // in modo da vederlo nei log
+    unsigned char buf[6];
     uint16_t *dummy_port = (uint16_t *) &buf[0];
     uint32_t *dummy_addr = (uint32_t *) &buf[2];
     *dummy_port = NO_USR;
@@ -70,6 +71,7 @@ void deallocate_list(peer_list** pl)
     }
 }
 
+// Utility: fa il log della lista di peer passata
 void print_peers(peer_list* list)
 {
     int cont = 0;
@@ -81,28 +83,40 @@ void print_peers(peer_list* list)
     }
 }
 
-// genera un costo casuale da un minimo di 1 a un massimo di 255
+// genera un costo casuale 0 a 255
 uint8_t generate_cost()
 {
     return rand() % 256;
 }
 
+// Manda il proprio costo agli altri peer. Se necessario apre le
+// rispettive connessioni TCP. Ritorna il numero di peer a cui si
+// è riusciti a mandare il costo 
 int send_cost(peer_list* lst, uint8_t cost)
 {
     LOG("send cost: mando costo(%u) a tutti\n", cost);
-    int aperto = 1; // indica se il socket della connessione che sto valutando è già aperto 
-    int count = 0; // conta il numero di peer ai quali è stato mandato il costo
+    // indica se il socket della connessione che sto valutando è già aperto 
+    int aperto = 1; 
+    // conta il numero di peer ai quali è stato mandato il costo
+    int count = 0; 
     while(lst)
     {
-        if(lst->addr == 0) // L'elemento nella lista rappresenta me
+        // L'elemento della lista con indirizzo 0 divide 
+        // i peer con cui la connessione è già aperta (perchè sono stati i primi a mandare
+        // il proprio costo) e quelli con cui la connessione va aperta
+        if(lst->addr == 0) 
         {
             LOG("send_cost: trovato me stesso nella lista\n");
             aperto = 0;
             lst = lst->next;
             continue;
         }
-        if(!aperto) // non è ancora stato aperto il socket per questa connessione
+        // non è ancora stato aperto il socket per questa connessione
+        if(!aperto) 
         {
+            // Apro la connessione, e per poter costruire un meccanismo di fallback imposto un 
+            // timeout sui socket, in modo che in caso di peer disconnesso il peer non rimanga in 
+            // condizione di deadlock
             LOG("send_cost: apro socket per %u\n", lst->port);
             lst->sock = socket(AF_INET, SOCK_STREAM, 0);
             if(setsockopt (lst->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
@@ -120,11 +134,13 @@ int send_cost(peer_list* lst, uint8_t cost)
                     ntohs(addr_peer.sin_port), lst->addr);
             addr_peer.sin_addr.s_addr = htonl(lst->addr);
             addr_peer.sin_family = AF_INET;
-            // DEBUG
+
+            // Le seguienti 4 righe servono esclusivamente al logging e debug
             char ip[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &addr_peer.sin_addr, ip, sizeof(ip));
             LOG("connect -> %s:%u (raw addr=%u)\n",
                 ip, lst->port, lst->addr);
+
             if(connect(lst->sock, (struct sockaddr*)&addr_peer, sizeof(addr_peer)))
             {
                 ERR("connect fallita\n\tport %u\taddr %u\n", lst->port, lst->addr);
@@ -134,7 +150,8 @@ int send_cost(peer_list* lst, uint8_t cost)
                 continue;
             }
         }
-        LOG("faccio la send\n");
+        LOG("send a %u\n", lst->port);
+        // Viene mandato il costo generato al peer valutato in quel momento
         if(send(lst->sock, (void*)&cost, 1, 0) != 1)
         {
             ERR("errore send\n\tport %u\taddr %u\n", lst->port, lst->addr);
@@ -147,6 +164,12 @@ int send_cost(peer_list* lst, uint8_t cost)
     return count;
 }
 
+// Funzione da chiamare su ogni elemento della lista di peer.
+// Va chiamata anche con NULL come lista per reimpostare 
+// la variabile statica del costo minimo corrente.
+// Se next ha come indirizzo 0 è il peer su cui questo processo 
+// sta essendo eseguito, quindi si dovrà chiamare la send_cost.
+// altrimenti bisognerà ricevere il costo dal relativo peer.
 unsigned kanban_p2p_iteration(int sock, peer_list *list, peer_list* next, 
         uint16_t user_port,  uint16_t* winner_proc)
 {
@@ -171,10 +194,12 @@ unsigned kanban_p2p_iteration(int sock, peer_list *list, peer_list* next,
         LOG("kanban_p2p: mandato il costo a %u processi\n", sent);
         if(curr_cost <= curr_min_cost)
         {
+            // Se il mio costo è migliore del minimo corrente, 
+            // aggiorno il minimo corrente
             curr_min_cost = curr_cost;
             *winner_proc = next->port;
         }
-        return 1; // continua
+        return 1; 
     }
 
     LOG("kanban_p2p: mi aspetto una connect da parte di %u\n", next->port);
@@ -195,15 +220,14 @@ unsigned kanban_p2p_iteration(int sock, peer_list *list, peer_list* next,
     }
     // metto timer 3s al nuovo socket, in modo che se un altro peer 
     // si disconnette non rimango in deadlock
-    // FIXME ???
-    //if(setsockopt(next->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
-    //{
-    //    ERR( "errore setsockopt\n");
-    //}
-    //if(setsockopt(next->sock, SOL_SOCKET, SO_SNDTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
-    //{
-    //    ERR( "errore setsockopt\n");
-    //}
+    if(setsockopt(next->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
+    {
+        ERR( "errore setsockopt\n");
+    }
+    if(setsockopt(next->sock, SOL_SOCKET, SO_SNDTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
+    {
+        ERR( "errore setsockopt\n");
+    }
 
     LOG("kanban_p2p: faccio la recv\n");
     ssize_t msglen = recv(next->sock, (void*)&curr_cost, 1, 0);

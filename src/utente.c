@@ -26,6 +26,7 @@ int card_done(int server_sock, lavagna_t **doing_list)
     // estrazione in testa
     lavagna_t *cc = extract_from_lavagna(doing_list, 
             (*doing_list)->card.id); 
+    DBG("card_done: estratto card %u\n", cc->card.id);
     // libero la card
     free(cc->card.desc); 
     free(cc);
@@ -266,19 +267,24 @@ void *prompt_cycle_function(void* self_info)
         switch(c)
         {
             case CMD_NOP:
-                // no comando
+                // non fare nulla
                 continue;
             case CMD_QUIT:
                 // disconnessione e terminazione programma
                 disconnect(server_sock);
+                // cmd invalid va con stampa utenti connessi (comando 
+                // di lavagna, non di utente)
             case CMD_INVALID:
             case CMD_STAMPA_UTENTI_CONNESSI:
                 printf(">! comando inesistente, o prefisso comune a più comandi\n");
                 continue;
             case CMD_CREATE_CARD:
+                // Se c'è già una carta creata, e sta essendo processata, 
+                // non deve essere possibile che l'utente provi a crearne un'altra
                 if(!pthread_mutex_trylock(&created_m))
                 {
-                    created = create_card();  // crea card
+                    // In caso contrario questa viene creata
+                    created = create_card();  
                     printf("\n%s> ", user_prompt);
                     fflush(stdout);
                     pthread_mutex_unlock(&created_m);
@@ -290,14 +296,16 @@ void *prompt_cycle_function(void* self_info)
                 }
                 break;
             case CMD_SHOW_LAVAGNA:
-                LOG( "prompt: Arrivato comando show lavagna\n\tcmd_head: %d\n\tcmd_tail: %d\n",
+                LOG("prompt: Arrivato comando show lavagna\n\tcmd_head: %d\n\tcmd_tail: %d\n",
                         cmd_head, cmd_tail);
                 break;
         }   
+        // Se arrivato qui, c è un comando valido e il thread di 
+        // comunicazione con la lavagna ha ciò che serve perchè possa essere eseguito:
+        // Posso inserire il comando nella cmdqueue
         pthread_mutex_lock(&cmd_queue_m);
-        cmd_queue[cmd_head] = c;
+        cmd_queue[cmd_head] = c; 
         cmd_head = (cmd_head + 1) % MAX_QUEUE_CMD;
         pthread_mutex_unlock(&cmd_queue_m);
     }
 }
-

@@ -21,8 +21,8 @@ char user_prompt[13]; // utentexxxxxx\0
 task_card_t *created = NULL;
 pthread_mutex_t created_m; 
 
-lavagna_t *doing = NULL; // non serve mutex: 
-                         // struttura dati nota esclusivamente qui
+lavagna_t *doing = NULL;
+
 time_t doing_timestamp = 0;  // nessuna card presa in carico
 
 int listener;
@@ -99,10 +99,10 @@ void send_command(int server_sock)
 
             pthread_mutex_lock(&created_m);
             printf("\n>> mandando card appena creata...\n");
-            // posso mandare la card
-            send_card(server_sock, created); // manda card al server
-            free(created->desc); // libero la descrizione, anc'essa allocata nello heap
-             // libero la card 
+            send_card(server_sock, created); 
+            // libero la descrizione, anc'essa allocata nello heap
+            free(created->desc); 
+            // libero la card 
             free(created); 
             pthread_mutex_unlock(&created_m);
 

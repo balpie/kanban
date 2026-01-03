@@ -568,7 +568,8 @@ void* serv_client(void* cl_info)
         case INSTR_CARD_DONE:
             pthread_rwlock_wrlock(&m_lavagna);
             LOG("se esiste, metto la card dell'utente in done\n");
-            lavagna_t* done_card = extract_from_lavagna(&lavagna, lavagna->card.id);
+            lavagna_t* done_card = extract_from_lavagna(&lavagna, instr_from_client[1]);
+            DBG("sposto carta %d da doing a done: \n", done_card->card.id);
             if(done_card)
             {
                 LOG("La card esisteva\n");
@@ -582,6 +583,10 @@ void* serv_client(void* cl_info)
                 show_lavagna(lavagna); // mostro la lavagna a video
                 printf("\nlavagna> ");
                 fflush(stdout);
+            }
+            else
+            {
+                LOG("serv_client(%u) ha provato a fare card_done su carta non presente nella lavagna\n", connessione->port_id);
             }
             pthread_rwlock_unlock(&m_lavagna);
         }
