@@ -610,6 +610,7 @@ void stampa_utenti_connessi(connection_l_e *head)
     }
 }
 
+// chiude socket e pulisce memoria
 void cleanup(int listener_sock, connection_l_e** list)
 {
     close(listener_sock);

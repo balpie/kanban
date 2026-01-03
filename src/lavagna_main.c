@@ -9,19 +9,27 @@
 #include <string.h>
 
 connection_l lista_connessioni;
-
-int sock_listener; // in modo da poter terminare dai thread
+int sock_listener; 
 struct server_status status; 
 
+// Lavagna attività e relativo rwlock
 lavagna_t *lavagna = NULL; 
 pthread_rwlock_t m_lavagna;
 
+// Timeout ricezione. E' il tempo che la lavagna aspetta 
+// che l'utente connesso mandi un messaggio.
+// Se non arriva nulla al termine del messaggio si assume 
+// che l'utente non abbia nessun istruzione
+// da inoltrare alla lavagna
 struct timeval timeout_recv = {
     .tv_sec = 1,
     .tv_usec = 0
 };      
 
-int main(int argc, char *argv[]) // main thread: listener
+// La funzione main si occupa di inizializzare le strutture dati e 
+// le strutture per la thread safety, e del ciclo di listen e creazione thread
+// per ogni nuova connessione
+int main(int argc, char *argv[]) 
 {
     if(argc < 2 || strcmp(argv[1], "-d")) 
     {
@@ -40,6 +48,7 @@ int main(int argc, char *argv[]) // main thread: listener
         }
         fflush(stderr);
     }
+    // Inizializzazione strutture dati
     pthread_mutex_init(&status.m, NULL);
     pthread_rwlock_init(&m_lavagna, NULL);
     status.n_connessioni = 0;
@@ -49,12 +58,14 @@ int main(int argc, char *argv[]) // main thread: listener
     struct sockaddr_in new_connection;
     sock_listener = init_listener(&listener_addr, LAVAGNA_PORT);
     int new_sock;
-    // Inizializzo strutture dati per i thread
     pthread_t prompt_thread;
     pthread_t server_processes; 
     pthread_mutex_init(&lista_connessioni.m, 0);
     pthread_cond_init(&status.cv, NULL);
-    // creo il thread per interazione via terminale
+
+    // creo il thread per interazione via terminale.
+    // Questo è utile per verificare lo stato della lavagna senza
+    // bisogno di stampe
     pthread_create(&prompt_thread, NULL, prompt_cycle, NULL); 
     while(1)
     {
@@ -62,7 +73,7 @@ int main(int argc, char *argv[]) // main thread: listener
         if(status.n_connessioni < MAX_SERVER_PROCS)
         {
             new_sock = accept(sock_listener, (struct sockaddr*)&new_connection, &len_new);
-            fprintf(stderr, "[dbg] do al socket timeout 1s in send\n");
+            LOG("do al socket timeout 1s in send\n");
             if (setsockopt (new_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_recv, sizeof(timeout_recv)) < 0)
                 LOG("errore setsockopt\n");
             // alloco nello heap altrimenti in caso di connessioni molto vicine tra loro
@@ -75,10 +86,11 @@ int main(int argc, char *argv[]) // main thread: listener
             pthread_detach(server_processes);
         }
         else 
-        { // aspetto che qualcuno si disconnetta prima di accettare una nuova conessione
+        { 
+            // aspetto che qualcuno si disconnetta prima di accettare una nuova conessione
             sleep(1);
         }
-        fprintf(stderr, "[dbg] listener: numero connessioni %d\n", status.n_connessioni + 1);
+        LOG("listener: numero connessioni %d\n", status.n_connessioni + 1);
     }
     return 0;
 }

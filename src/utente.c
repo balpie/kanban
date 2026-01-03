@@ -6,9 +6,13 @@
 #include <string.h>
 #include <unistd.h>
 
+// Stringa contenente il prompt del client, così composto: 
+// "utentexxxxx" dove le x rappresentano le 4 o 5 cifre della porta identificativa.
 char prompt_msg[12];
 
-
+// Comunica alla lavagna che una determinata card è stata terminata.
+// Questa carta è quella in testa nella lista doing, quindi le card vengono 
+// terminate con ordine lifo (come una stack)
 int card_done(int server_sock, lavagna_t **doing_list)
 {
     uint8_t instr_to_server[2];
@@ -18,7 +22,7 @@ int card_done(int server_sock, lavagna_t **doing_list)
     }
     instr_to_server[0] = INSTR_CARD_DONE;
     instr_to_server[1] = doing->card.id; 
-    LOG( "Estraggo dalla lavagna\n");
+    LOG("Estraggo dalla lavagna\n");
     // estrazione in testa
     lavagna_t *cc = extract_from_lavagna(doing_list, 
             (*doing_list)->card.id); 
@@ -29,7 +33,8 @@ int card_done(int server_sock, lavagna_t **doing_list)
     return 1;
 }
 
-// Manda la card in doing se è passato abbastanza tempo.
+// valuta se la card in doing deve essere mandata, in base al timestamp
+// di aquisizione doing_timestamp. Se deve essere mandata la manda, e ritorna 1.
 int send_if_done(int server_sock) 
 {
     // Se l'utente non sta facendo nessuna attività
@@ -55,12 +60,16 @@ int send_if_done(int server_sock)
     return 0;
 }
 
+// funzione di utilità: da chiamare in caso di output troppo lungo quando chiamata fgets
+// toglie i caratteri in eccesso, fino ad arrivare al \n
 void clear_stdin_buffer()
 {
     char c;
     while((c = getchar()) != '\n'); 
 }
 
+// tenta di effettuare la connessione e registrazione del client,
+// in caso di fallimento termina il processo
 int registra_utente(int port)
 {
     int sd = socket(AF_INET, SOCK_STREAM, 0);
@@ -71,7 +80,7 @@ int registra_utente(int port)
     indirizzo_server.sin_family = AF_INET;
     if(connect(sd, (struct sockaddr*)&indirizzo_server, sizeof(indirizzo_server)))
     {
-        perror(">! errore connect");
+        perror(">! errore connect ");
         close(listener);
         exit(-1);
     }
@@ -102,6 +111,8 @@ int registra_utente(int port)
     return sd;
 }
 
+// Riceve da stdin la descrizione di una card.
+// non è accettata registrazione vuota.
 char* get_desc(char* buf)
 {
     int count = 0;
@@ -134,6 +145,7 @@ char* get_desc(char* buf)
     return desc;
 }
 
+// Riceve da stdin colonna della card.
 int get_col()
 {
     char buf[2];
@@ -160,7 +172,10 @@ int get_col()
     return buf[0] - '0';
 }
 
-// Ritorna la card in caso di successo, 0 altrimenti
+// Ritorna la card in caso di successo, 0 altrimenti.
+// Crea la card.
+// E' richiesto il numero di porta solo per card già fatte, in quanto
+// altrimenti si bypasserebbe il sistema dell'asta
 task_card_t *create_card()
 {
     task_card_t *new_card = (task_card_t*)malloc(sizeof(task_card_t));
@@ -225,9 +240,12 @@ void disconnect(int server_sock)
     close(listener);
     close(server_sock);
     LOG("arrivato comando QUIT\n");
-    _exit(0); // uso questa in modo da terminare anche il thread fermo su fgets
+    // devo usare questa funzione per terminare tutto il processo, 
+    // incluso un eventuale thread fermo su fgets (per esempio in create_card)
+    _exit(0); 
 }
 
+// Funzione per il thread relativo all'interazione con il thread via terminale
 void *prompt_cycle_function(void* self_info)
 {
     int* port_sock = (int*)self_info;
@@ -236,12 +254,15 @@ void *prompt_cycle_function(void* self_info)
     for(;;)
     {
         c = prompt_line(prompt_msg);
+        pthread_mutex_lock(&cmd_queue_m);
         if((cmd_head + 1) % MAX_QUEUE_CMD == cmd_tail)
         {
             // caso coda piena
+            pthread_mutex_unlock(&cmd_queue_m);
             printf(">! coda comandi piena, i prossimi comandi verranno ignorati\n");
             continue;
         }
+        pthread_mutex_unlock(&cmd_queue_m);
         switch(c)
         {
             case CMD_NOP:

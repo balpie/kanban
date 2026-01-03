@@ -339,8 +339,8 @@ int main(int argc, char* argv[])
         if(instr_from_server[0] == INSTR_PING)
         { 
             instr_to_server[0] = INSTR_PONG;
-            TST("Faccio arrivare apposta in ritardo il pong\n");
-            sleep(20); 
+            //TST("Faccio arrivare apposta in ritardo il pong\n");
+            //sleep(3); 
             send_msg(server_sock, instr_to_server, 2);
             continue;
         }
