@@ -16,13 +16,15 @@ char cmd_queue[MAX_QUEUE_CMD];
 int cmd_head = 0;
 int cmd_tail = 0;
 pthread_mutex_t cmd_queue_m;
-char user_prompt[13]; // Utentexxxxxx\0
+char user_prompt[13]; // utentexxxxxx\0
 
 task_card_t *created = NULL;
 pthread_mutex_t created_m; 
 
 lavagna_t *doing = NULL; // non serve mutex: 
                          // struttura dati nota esclusivamente qui
+time_t doing_timestamp = 0;  // nessuna card presa in carico
+
 int listener;
 
 // timeout socket con lavagna
@@ -169,16 +171,12 @@ void send_command(int server_sock)
             break;
         case CMD_CARD_DONE:
             // Per ora l'utente può finire le task con ordine LIFO
-            if(!doing)
+            if(!card_done(server_sock, &doing))
             {
-                printf(">! nessuna carta in doing, comando equivalente a NOP\n");
-                break;
+                printf("\n>! nessuna carta in doing\n");
+                printf("%s", user_prompt);
+                fflush(stdout);
             }
-            instr_to_server[0] = INSTR_CARD_DONE;
-            instr_to_server[1] = doing->card.id; 
-            LOG( "Estraggo dalla lavagna\n");
-            extract_from_lavagna(&doing, doing->card.id); // estrazione in testa
-            send_msg(server_sock, instr_to_server, 2);
             break;
     }
 }
@@ -260,6 +258,11 @@ int main(int argc, char* argv[])
         }
         if(msglen < 0) // Se il server non mi ha mandato nulla
         {
+            // Se è passato abbasatanza tempo, mando la prima card in doing
+            if(send_if_done(server_sock))
+            {
+                continue;
+            }
             // mando, se c'è, un comando
             send_command(server_sock);
             continue;
@@ -319,10 +322,13 @@ int main(int argc, char* argv[])
             LOG("user_port %u\twinner %u\n", user_port ,winner);
             if(winner == user_port) 
             {
-                printf(">> Ho proposto il costo minore, quindi mi prendo la card\n%s>"
+                printf("\n>> Ho proposto il costo minore, quindi mi prendo la card\n%s> "
                         , user_prompt);
                 fflush(stdout);
                 insert_into_lavagna(&doing, contended_card);
+                // Memorizzo il timestamp di arrivo della card
+                // per poterla mandare passato un intervallo di tempo MAX_TIME_DOING secondi
+                doing_timestamp = time(NULL);
             }
             free(contended_card);
             send_msg(server_sock, (void*)&network_winner, 2);
@@ -334,7 +340,7 @@ int main(int argc, char* argv[])
         { 
             instr_to_server[0] = INSTR_PONG;
             //TST("Faccio arrivare apposta in ritardo il pong\n");
-            //sleep(2); 
+            //sleep(20); 
             send_msg(server_sock, instr_to_server, 2);
             continue;
         }

@@ -8,6 +8,53 @@
 
 char prompt_msg[12];
 
+
+int card_done(int server_sock, lavagna_t **doing_list)
+{
+    uint8_t instr_to_server[2];
+    if(!*doing_list)
+    {
+        return 0; 
+    }
+    instr_to_server[0] = INSTR_CARD_DONE;
+    instr_to_server[1] = doing->card.id; 
+    LOG( "Estraggo dalla lavagna\n");
+    // estrazione in testa
+    lavagna_t *cc = extract_from_lavagna(doing_list, 
+            (*doing_list)->card.id); 
+    // libero la card
+    free(cc->card.desc); 
+    free(cc);
+    send_msg(server_sock, instr_to_server, 2);
+    return 1;
+}
+
+// Manda la card in doing se è passato abbastanza tempo.
+int send_if_done(int server_sock) 
+{
+    // Se l'utente non sta facendo nessuna attività
+    if(!doing_timestamp) 
+    {
+        return 0;
+    }
+    // Se l'utente ha finito
+    if(time(NULL) - doing_timestamp >= MAX_TIME_DOING)
+    {
+        card_done(server_sock, &doing); 
+        // Se c'è un'altra carta da fare aggiorno il timestamp
+        if(doing)
+        {
+            doing_timestamp = time(NULL);
+        }
+        else
+        {
+            doing_timestamp = 0;
+        }
+        return 1;
+    }
+    return 0;
+}
+
 void clear_stdin_buffer()
 {
     char c;
@@ -164,7 +211,6 @@ void disconnect(int server_sock)
 void *prompt_cycle_function(void* self_info)
 {
     int* port_sock = (int*)self_info;
-    //int user_port = port_sock[0];
     int server_sock = port_sock[1];
     char c;
     for(;;)

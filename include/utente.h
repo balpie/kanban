@@ -9,6 +9,9 @@
 
 #define COMMON_LOGFILE_NAME "log/log_usr"
 
+// Tempo in cui una carta rimane in doing in secondi.
+// Una volta scaduto la card viene mandata come done a lavagna
+#define MAX_TIME_DOING 5
   
 // Coda circolare dei comandi da eseguire
 extern char cmd_queue[MAX_QUEUE_CMD];
@@ -23,6 +26,8 @@ extern task_card_t *created;
 // carta attualmente in doing. NULL se non presente
 extern lavagna_t *doing;
 extern pthread_mutex_t created_m;
+// timestamp istante in cui la card attualmente in doing è stata presa in carico
+extern time_t doing_timestamp; 
 
 extern char prompt_msg[12];
 extern char user_prompt[13]; // utentexxxxxx\0
@@ -48,16 +53,16 @@ int registra_utente(int);
 
 // Disconnette l'utente dalla lavagna e termina(da passare socket del server)
 void disconnect(int);
-// PONG_LAVAGNA:
-// Messaggio di risposta a PING_USER
-
-// CHOSE_USER
-// Messaggio da inviare tra utenti per decidere chi prenderà la card
-// randomizzare il costo, card a costo minore, a parità di costo porta minore
-
-// ACK_CARD
-// L'utente a cui viene assegnata la card lo comunica alla lavagna
 
 // CARD_DONE
 // L'utente comunica alla lavagna la terminazione dell'attività
+// terminerà l'attività in testa alla lista passata
+// per argomento, e verrà rimossa dalla relativa lista
+// ritorna 0 in caso di fallimento, 1 altrimenti
+int card_done(int, lavagna_t **);
+
+// controlla il tempo attuale e lo confronta con timestamp.
+// Se la differenza è maggiore di MAX_TIME_DOING manda card done alla lavagna
+// ritorna 1 se ha mandato la card, 0 altrimenti
+int send_if_done(int); //TODO 
 #endif

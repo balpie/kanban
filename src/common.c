@@ -4,7 +4,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
-
+// array contenente i comandi validi
 const char *CMD_STR_ARR[] = {
     CMD_STR_CREATE_CARD,
     CMD_STR_QUIT,
@@ -13,6 +13,7 @@ const char *CMD_STR_ARR[] = {
     CMD_STR_CARD_DONE
 };
 
+// array contenente gli opcode dei comandi validi
 const char CMD_ARR[] = {
     CMD_CREATE_CARD,
     CMD_QUIT,
@@ -21,6 +22,8 @@ const char CMD_ARR[] = {
     CMD_CARD_DONE
 };
 
+// Stampa rispettando una dimensione delle linee pari a size, mettendo all'inizio
+// e alla fine della linea un delimiter
 void print_in_box(char* str, size_t size, char delimiter)
 {
     if(!str)
@@ -48,7 +51,7 @@ void print_in_box(char* str, size_t size, char delimiter)
     }
 }
 
-
+// Mostra la lavagna, assumendo ordinamento crescente rispetto alla colonna 
 void show_lavagna(lavagna_t *l)
 {
     putchar('\n');
@@ -105,17 +108,18 @@ void show_lavagna(lavagna_t *l)
     return;
 }
 
-void copia_card(task_card_t *src, task_card_t *dest)
+// copia la card src in dest, assumendo che la descrizione sia già allocata
+void copia_card(const task_card_t *src, task_card_t *dest)
 {
     dest->id = src->id;
     dest->colonna = src->colonna;
     dest->utente = src->utente;
     dest->last_modified = src->last_modified;
-    dest->desc = src->desc; // la descrizione è allocata dinamicamente
+    dest->desc = src->desc; 
 }
 
 // Inserimento ordinato rispetto alla colonna all'interno della lavagna
-void insert_into_lavagna(lavagna_t **l, task_card_t *card)
+void insert_into_lavagna(lavagna_t **l, const task_card_t *card)
 {
     lavagna_t* new = (lavagna_t*)malloc(sizeof(lavagna_t)); 
     copia_card(card, &(new->card)); 
@@ -142,7 +146,6 @@ void insert_into_lavagna(lavagna_t **l, task_card_t *card)
     new->next = iter;
 }
 
-
 lavagna_t* extract_from_lavagna(lavagna_t **l, uint8_t id)
 {
     lavagna_t* iter = *l;
@@ -152,11 +155,11 @@ lavagna_t* extract_from_lavagna(lavagna_t **l, uint8_t id)
         prec = iter;
         iter = iter->next;
     }
-    if(!iter) // arrivato in fondo senza trovare la card che cercavo
+    if(!iter) //arrivato in fondo senza trovare la card che cercavo
     { 
         return NULL;
     }
-    if(!prec) // rimozione in testa
+    if(!prec) //rimozione in testa
     {
         *l = (*l)->next;
         return iter;
@@ -166,7 +169,8 @@ lavagna_t* extract_from_lavagna(lavagna_t **l, uint8_t id)
     return iter;
 }
 
-// TODO fix memory leak
+// Dealloca la lavagna. E' poi necessario settare dal chiamante
+// ll = NULL per evitare undefine behaviour
 void libera_lavagna(lavagna_t* ll)
 {
     if(!ll)
@@ -264,6 +268,7 @@ char prompt_line(char* content)
 }
 
 // serializzazione e hton dei membri numerici con sizeof > 1
+// la funzione assume che buf sia stato allocato dal chiamante
 size_t prepare_card(task_card_t *card, void* buf)
 {
     // max 255 byte (escludendo \0)

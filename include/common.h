@@ -16,9 +16,7 @@
 #define CMD_STR_STAMPA_UTENTI_CONNESSI "SEE_CONNECTED"
 #define CMD_STR_SHOW_LAVAGNA "SHOW_LAVAGNA"
 #define CMD_STR_CARD_DONE "CARD_DONE"
-// Lettere maiuscole: comandi validi per lavagna
-// Lettere minuscole: comandi validi per utente 
-// altri caratteri: comandi validi per entrambi
+
 #define CMD_NOP '\0'
 #define CMD_QUIT '.'
 #define CMD_INVALID '-'
@@ -30,6 +28,7 @@
 #define CMD_CARD_DONE 'd'
 
 // valore di porta considerato come nessun utente
+// In realtà andrebbe bene qualsiasi intero <= 5678
 #define NO_USR 1023U
 
 #define MAX_DIM_DESC 256
@@ -38,6 +37,8 @@
 // esprimere la dimensione dei messaggi con un singolo byte
 
 // error logs
+
+// I logfile sono pensati per essere visti da terminale con cat
 #define LOG(...) fprintf(stderr, "[log] " __VA_ARGS__)
 // Log di errore di colore rosso su terminale
 #define ERR(fmt, ...) fprintf(stderr, "\033[31;10;10m[err] "fmt"\033[0m", ##__VA_ARGS__)
@@ -48,14 +49,16 @@
 // Utility
 #define VALID_PORT(pp) ((pp > 5678) ? (1) : (0))
 
+// Dimensione orizzontale della lavagna su terminale (inclusi delimitatori)
 #define LAVAGNA_WIDTH 25
 
 struct task_card_tipo { 
     uint8_t id; 
     uint8_t colonna; 
     uint16_t utente; 
-    int64_t last_modified;
-    char *desc;
+    int64_t last_modified; 
+    // Allocata dinamicamente
+    char *desc; 
 };
 typedef struct task_card_tipo task_card_t;
 
@@ -68,18 +71,17 @@ struct lavagna_tipo{
 // mostra singola card
 void show_card(task_card_t *);
 
+// mostra intera lavagna
 void show_lavagna(lavagna_t *l);
 
-// ordinata rispetto alla colonna
-void insert_into_lavagna(lavagna_t **l, task_card_t *card);
+// inserimento ordinato rispetto alla colonna
+void insert_into_lavagna(lavagna_t **l, const task_card_t *card);
 
-
-// rimuove la task id dalla lavagna. Utile per riordinarla
+// rimuove la task id dalla lavagna. Utilizzato per move_card
 lavagna_t* extract_from_lavagna(lavagna_t **, uint8_t);
 
 char prompt_line(char*);
 
-// serializza la card
 // serializza card in buf, e ritorna la dimensione
 size_t prepare_card(task_card_t *card, void* buf); 
 

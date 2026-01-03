@@ -3,32 +3,29 @@
 
 #define RTR_CONN_CLOSE 0
 
-// messaggi di ping e di pong sono 0 perchè non è ambiguo: 
-// ho fatto in modo che non sia possibile mandare un byte 0
-// TODO: non è vero. campi indirizzo e porta possono avere al loro interno byte 0
-
 // Definizioni macro che iniziano con INSTR relative a "comandi"  inviati dal
 // client al server o viceversa 
-#define INSTR_NOP '0' // no card disponibili in todo, quindi l'utente non ha nulla da fa
-#define INSTR_EMPTY '1' // Lista da mandare vuota
-#define INSTR_TAKEN '2' // port o task id
-#define INSTR_ACK '3' // card o utente ricevuto validi e registrati 
-#define INSTR_AVAL_CARD '4' // presenti almeno 2 utenti, e almeno 1 card in colonna TO-DO
-                            // parte il meccanismo di assegnamento della card
-#define INSTR_CLIENTS_READY '5' // server comunica ai client che sono pronti per far partire
+// Il server usa alcuni di questi come stati 
+#define INSTR_NOP 0             // no card disponibili in todo, quindi l'utente non ha nulla da fa
+#define INSTR_EMPTY 1           // Lista da mandare vuota
+#define INSTR_TAKEN 2           // port o task id
+#define INSTR_ACK 3             // card o utente ricevuto validi e registrati 
+#define INSTR_AVAL_CARD 4       // presenti almeno 2 utenti, e almeno 1 card in colonna TO-DO
+                                // parte il meccanismo di assegnamento della card
+#define INSTR_CLIENTS_READY 5   // server comunica ai client che sono pronti per far partire
                                 // l'interazione di tipo p2p, in quanto hanno tutti ricevuto e acked 
                                 // le loro cose
-#define INSTR_PING '@'
+#define INSTR_PING 6
 #define INSTR_PONG INSTR_PING
 
 // ISTRUZIONI DAL CLIENT
-#define INSTR_NEW_CARD '6' // il successivo byte ricevuto è la dimensione della card che verrà 
-                           // inviata successivamente dall'utente
+#define INSTR_NEW_CARD 7        // il successivo byte ricevuto è la dimensione della card che verrà 
+                                // inviata successivamente dall'utente
 
-#define INSTR_SHOW_LAVAGNA '7' // indica una richiesta da parte dell'utente di mandare
-                               // tutte le card della lavagna
-#define INSTR_ACK_PEERS '8'
-#define INSTR_CARD_DONE '9'
+#define INSTR_SHOW_LAVAGNA 8    // indica una richiesta da parte dell'utente di mandare
+                                // tutte le card della lavagna
+#define INSTR_ACK_PEERS 9       
+#define INSTR_CARD_DONE 10
 
 #define LAVAGNA_PORT 5678
 #define LAVAGNA_ADDR "127.0.0.1"
@@ -38,7 +35,7 @@
 #include <arpa/inet.h>
 #include "common.h"
 
-// implementazione di htonll
+// implementazione di htonll per il timestamp
 uint64_t htonll(uint64_t num);
 uint64_t ntohll(uint64_t num);
 

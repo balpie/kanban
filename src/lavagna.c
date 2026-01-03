@@ -7,11 +7,15 @@
 #include <pthread.h>
 #include <string.h>
 
+// delay attesa per la ricezione del pong.
+// Una volta terminato questo delay il relativo utente verrà disconnesso, 
+// e la card tornerà in colonna TO-DO
 struct timeval timeout_pong = {
     .tv_sec = TIME_PONG_MAX_DELAY,
     .tv_usec = 0
 };      
 
+// Ciclo del prompt
 void* prompt_cycle(void *arg)
 {
     char cmd;
@@ -29,6 +33,8 @@ void* prompt_cycle(void *arg)
             case CMD_SHOW_LAVAGNA:
                 pthread_rwlock_rdlock(&m_lavagna);
                 show_lavagna(lavagna);
+                printf("\nlavagna> ");
+                fflush(stdout);
                 pthread_rwlock_unlock(&m_lavagna);
                 break;
             case CMD_INVALID:
@@ -36,7 +42,7 @@ void* prompt_cycle(void *arg)
                 printf(">! comando inesistente, o prefisso comune a più comandi\n");
                 break;
         }
-    }while(cmd != CMD_QUIT);
+    }while(cmd != CMD_QUIT); 
     printf("<< ripulisco socket e heap...\n");  
     cleanup(sock_listener, &lista_connessioni.head);
     exit(0);
@@ -70,7 +76,7 @@ connection_l_e* get_connection(uint16_t port)
     return NULL;
 }
 
-connection_l_e* registra_client(int socket, uint32_t addr) // TODO error checking
+connection_l_e* registra_client(int socket, uint32_t addr) 
 {
     char instr_to_client[2];
     uint16_t port; // port_id
@@ -123,11 +129,11 @@ void send_lavagna(int sock ,lavagna_t *lavagna)
     instr_to_client[0] = INSTR_SHOW_LAVAGNA;
     instr_to_client[1] = count;
     LOG("send_lavagna, \n\tcount: %d\n", instr_to_client[1]);
-    send_msg(sock, instr_to_client, 2); // invio la quantità di card
+    // comunico al client la quantità di card da ricevere
+    send_msg(sock, instr_to_client, 2); 
     p = lavagna;
     for(uint8_t i = 0; i < count; i++)
     {
-        
         if(!send_card(sock, &p->card))
         {
             ERR("show_lavagna: send_card fallita\n");
@@ -241,8 +247,9 @@ void disconnect_user(connection_l_e* connessione)
                 case DOING_COL:
                     changed = 1;
                     lavagna_t *cc = extract_from_lavagna(&lavagna, (uint8_t)pl->card.id);
-                    if(cc) // non dovrebbe servire 
+                    if(cc) 
                     {
+                        cc->card.last_modified = time(NULL);
                         cc->card.colonna = TODO_COL;
                         cc->card.utente = NO_USR;
                         insert_lavagna_elem(&lavagna, cc);
@@ -339,11 +346,14 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
             lavagna_t* contended = extract_from_lavagna(&lavagna, lavagna->card.id);
             contended->card.colonna = DOING_COL;
             contended->card.utente = winner;
+            contended->card.last_modified = time(NULL);
+
             insert_lavagna_elem(&lavagna, contended);
             // mostro la lavagna a video visto che l'ho cambiata'
             show_lavagna(lavagna); 
             pthread_rwlock_unlock(&m_lavagna);
             printf("\nlavagna> ");
+            fflush(stdout);
         }
         else
         {
@@ -517,7 +527,6 @@ void* serv_client(void* cl_info)
         case INSTR_NOP:
             break;
         case INSTR_CARD_DONE:
-            // TODO Finisci
             pthread_rwlock_wrlock(&m_lavagna);
             LOG("se esiste, metto la card dell'utente in done\n");
             lavagna_t* done_card = extract_from_lavagna(&lavagna, lavagna->card.id);
@@ -525,13 +534,16 @@ void* serv_client(void* cl_info)
             {
                 LOG("La card esisteva\n");
                 done_card->card.colonna = DONE_COL;
+                done_card->card.last_modified = time(NULL);
                 insert_lavagna_elem(&lavagna, done_card);
                 if(get_doing_card_id(connessione->port_id) == -1) // se l'utente non ha nessuna card in doing
                 {
                     aquired = 0; // azzero il suo timer per ping-pong
                 }
+                show_lavagna(lavagna); // mostro la lavagna a video
+                printf("\nlavagna> ");
+                fflush(stdout);
             }
-            show_lavagna(lavagna); // mostro la lavagna a video
             pthread_rwlock_unlock(&m_lavagna);
         }
     } 

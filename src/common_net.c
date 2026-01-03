@@ -9,7 +9,8 @@
 // Usando il preprocessore funziona sia per macchine che
 // adottano little endian che per macchine che adottano 
 // big endian, ammesso che usino gcc
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ // Queste sono definite solo in gcc.
+                                           // Con altri compilatori probabilmente non funziona
 uint64_t htonll(uint64_t num)
 {
     return num;
@@ -33,7 +34,7 @@ uint64_t htonll(uint64_t num)
     uint64_t retv;
     memcpy((void*)&retv, (void*)&most_sign , 4);
     // Converto prima perchè altrimenti somma 4*sizeof(retv) = 32 byte
-    memcpy(((char*)(&retv) + 4), (void*)&least_sign, 4); 
+    memcpy(((void*)(&retv) + 4), (void*)&least_sign, 4); 
     return retv;
 }
 uint64_t ntohll(uint64_t num)
@@ -47,7 +48,7 @@ uint64_t ntohll(uint64_t num)
 int send_msg(int sock, void* msg, size_t size)
 {
     ssize_t sent = 0;
-    do
+    do // Loop perchè non è sicuro che tcp mi dia tutto quando voglio
     {
         ssize_t offs = send(sock, (char*)msg + sent, size - sent, 0);
         sent += offs;
@@ -58,7 +59,7 @@ int send_msg(int sock, void* msg, size_t size)
         }
         if(sent < size)
             ERR("send_msg: sent < size\n");
-    }while(sent < size);
+    }while(sent < size); 
     return 1;
 }
 
@@ -90,7 +91,6 @@ int init_listener(struct sockaddr_in* server_addr, uint16_t port)
     return listener;
 }
 
-
 // riceve messaggio dal socket (argomento 1) un messaggio di dimensione (argomento 2)
 int get_msg(int sock, void *buf, size_t size)
 {
@@ -116,13 +116,22 @@ int get_msg(int sock, void *buf, size_t size)
     return 1;
 }
 
+// La dimensione delle card varia in base alla dimensione della descrizione.
+// La descrizione può essere di un carattere o 255, escluso '\0'
 int send_card(int socket, task_card_t *cc)
 {
+    // Dimensione byte effettivamente mandati:
+    //      + sizeof(<tutti_gli_elementi>) 
+    //      - sizeof(puntatore a descrizione) 
+    //      + caratteri della descrizione (senza contate '\0'
     size_t net_card = sizeof(*cc) - sizeof(cc->desc) + strlen(cc->desc);
     char buffer[net_card]; 
-    unsigned dim = prepare_card(cc, buffer);
+    // serializzazione e network order dei parametri
+    unsigned dim = prepare_card(cc, buffer); 
     char instr_to_server[2]; 
-    instr_to_server[0] = INSTR_NEW_CARD;
+    // Quando è il server a mandare la card, lo fa all'interno di una serie di 
+    // messaggi fissi, e instr_to_server[0] viene ignorato dal client
+    instr_to_server[0] = INSTR_NEW_CARD; 
     instr_to_server[1] = strlen(cc->desc);
     unsigned msglen = send_msg(socket, instr_to_server, 2);
     unsigned failed = 0;
@@ -136,11 +145,15 @@ int send_card(int socket, task_card_t *cc)
 
 task_card_t* recive_card(int socket, size_t dim_desc_card)
 {
+    // allocazione nuova card
     task_card_t* card = (task_card_t*)malloc(sizeof(task_card_t));
     // preparo il buffer per la card in versione network
     char net_card[dim_desc_card + sizeof(task_card_t) - sizeof(char*)]; 
+    // ricezione nuova card
     get_msg(socket, net_card, dim_desc_card + sizeof(task_card_t) - sizeof(char*));
-    unprepare_card(card, net_card, dim_desc_card); // alloca la descrizione
+    // alloca la descrizione della card, de-serializza gli argomenti, e quando necessario
+    // li mette in host order
+    unprepare_card(card, net_card, dim_desc_card); 
     return card;
 }
 
