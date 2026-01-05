@@ -9,8 +9,8 @@
 // Usando il preprocessore funziona sia per macchine che
 // adottano little endian che per macchine che adottano 
 // big endian, ammesso che usino gcc
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ // Queste sono definite solo in gcc.
-                                           // Con altri compilatori probabilmente non funziona
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ 
+                                           
 uint64_t htonll(uint64_t num)
 {
     return num;

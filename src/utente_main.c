@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <pthread.h>
 #include <time.h>
+#include <fcntl.h>
 
 lavagna_t *lavagna = NULL;
 
@@ -18,13 +18,17 @@ int cmd_tail = 0;
 pthread_mutex_t cmd_queue_m;
 char user_prompt[13]; // utentexxxxxx\0
 
+// Puntatore alla carta creata. Il mutex è necessario per coordinare il thread 
+// di creazione della card con quello di comunicazione con la lavagna
 task_card_t *created = NULL;
 pthread_mutex_t created_m; 
 
+// Liste di carte attualmente in doing per l'utente
 lavagna_t *doing = NULL;
+// timestamp aquisizione prima carta nella lista doing
+time_t doing_timestamp = 0;  
 
-time_t doing_timestamp = 0;  // nessuna card presa in carico
-
+// socket listener per parte peer to peer
 int listener;
 
 // timeout socket con lavagna
@@ -47,6 +51,7 @@ void err_args(char* prg)
         _exit(-1);
 }
 
+// Riceve da lavagna i peer necessari per effettuare l'asta
 void get_peers(peer_list **peers, int server_sock, unsigned char instr_from_server[2], uint16_t user_port)
 {
     // Inizio get peer
@@ -66,7 +71,8 @@ void get_peers(peer_list **peers, int server_sock, unsigned char instr_from_serv
             disconnect(server_sock);
         }
     }
-    // aggiungo la porta di questo processo questo semplifica l'"iterazione" p2p
+    // Aggiungo l'utente stesso tra i peer, userò questa cosa in kanban_p2p_iteraction
+    // e send_cost
     peer_list *pp = (peer_list*)malloc(sizeof(peer_list));
     pp->port = user_port;
     pp->addr = 0; 
@@ -83,10 +89,10 @@ void send_command(int server_sock)
     unsigned char instr_to_server[2];
     char c;
     pthread_mutex_lock(&cmd_queue_m);
-    if(cmd_tail == cmd_head) // caso in cui non ho comandi da eseguire
+    // caso in cui non ho comandi da eseguire
+    if(cmd_tail == cmd_head) 
     {
         pthread_mutex_unlock(&cmd_queue_m);
-        // Torno ad aspettare che il server abbia qualcosa da fare
         return; 
     }
     c = cmd_queue[cmd_tail];

@@ -110,7 +110,6 @@ connection_l_e* registra_client(int socket, uint32_t addr)
     send_msg(socket, instr_to_client, 2);
     connection_l_e* conn = insert_connection(&(lista_connessioni.head), socket, ntohs(port), ntohl(addr)); 
     pthread_mutex_unlock(&lista_connessioni.m);
-
     pthread_mutex_lock(&status.m);
     status.n_connessioni++;
     pthread_mutex_unlock(&status.m);
@@ -247,11 +246,9 @@ void disconnect_user(connection_l_e* connessione)
     pthread_mutex_lock(&lista_connessioni.m);
     remove_connection(&(lista_connessioni.head), connessione->socket);
     pthread_mutex_unlock(&lista_connessioni.m);
-
     pthread_mutex_lock(&status.m);
     status.n_connessioni--;
     pthread_mutex_unlock(&status.m);
-
     pthread_rwlock_wrlock(&m_lavagna);
     lavagna_t *pl = lavagna;
     // scorro la lavagna, sposto le card in doing (dell'utente disconnesso)
@@ -344,6 +341,46 @@ void send_p2p_info(connection_l_e *connessione)
     pthread_mutex_unlock(&status.m);
 }
 
+// Assegna card dell'asta alla connessione con id winner
+int assign_card(uint16_t winner)
+{
+    if(!VALID_PORT(winner))
+    {
+        return 0;
+    }
+    pthread_rwlock_wrlock(&m_lavagna);
+    LOG("assign_card: preso lock lavagna, setto effettivamente winner: %d\n", winner);
+    lavagna_t* contended = extract_from_lavagna(&lavagna, lavagna->card.id);
+    contended->card.colonna = DOING_COL;
+    contended->card.utente = winner;
+    contended->card.last_modified = time(NULL);
+
+    insert_lavagna_elem(&lavagna, contended);
+    // mostro la lavagna a video visto che l'ho cambiata
+    show_lavagna(lavagna); 
+    pthread_rwlock_unlock(&m_lavagna);
+    printf("\nlavagna> ");
+    fflush(stdout);
+    return 1;
+}
+
+void restore_status()
+{
+        status.winner_arrived = 0;
+        status.total = 0;
+        status.sent = 0;
+        pthread_mutex_lock(&lista_connessioni.m);
+        connection_l_e *p = lista_connessioni.head;
+        while(p)
+        {
+            if(p->to_send)
+                p->to_send = NULL;
+            p = p->next;
+        }
+        pthread_mutex_unlock(&lista_connessioni.m);
+        status.status = INSTR_NOP;
+}
+
 // Ricevi dall'utente il risultato dell'asta. Se sei l'ultimo, disfai
 // status e inserisci nella lavagna. Ritorna il vincitore dell'asta
 uint16_t recv_p2p_result(connection_l_e* connessione)
@@ -364,50 +401,21 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
     memcpy((void*)&winner, instr_from_client, 2);
     winner = ntohs(winner); 
     LOG("recv_p2p_result: La task va a: %u\n", winner);
-
     pthread_mutex_lock(&status.m);
     // Se mi è arrivato il risultato dall'ultimo client, 
     // ed il risultato è valido, ripulisco connessioni e status, 
     // e aggiorno e mostro la lavagna a video
     if(++status.winner_arrived == status.total)
     {
-        if(VALID_PORT(winner))
+        if(!assign_card(winner))
         {
-            pthread_rwlock_wrlock(&m_lavagna);
-            LOG("recv_p2p_result: preso lock lavagna, setto effettivamente winner: %d\n", winner);
-            lavagna_t* contended = extract_from_lavagna(&lavagna, lavagna->card.id);
-            contended->card.colonna = DOING_COL;
-            contended->card.utente = winner;
-            contended->card.last_modified = time(NULL);
-
-            insert_lavagna_elem(&lavagna, contended);
-            // mostro la lavagna a video visto che l'ho cambiata
-            show_lavagna(lavagna); 
-            pthread_rwlock_unlock(&m_lavagna);
-            printf("\nlavagna> ");
-            fflush(stdout);
-        }
-        else
-        {
-            ERR("recv_p2p_result: fallimento asta, winner (%u) non valido \n", winner);
+            ERR("Utente %d ha passato un vincitore inesistente\n", connessione->port_id);
         }
         // A questo punto devo disfare le cose di status
         // ordine lock: status, connessioni, lavagna
         if(status.total != 0)
         {
-            status.winner_arrived = 0;
-            status.total = 0;
-            status.sent = 0;
-            pthread_mutex_lock(&lista_connessioni.m);
-            connection_l_e *p = lista_connessioni.head;
-            while(p)
-            {
-                if(p->to_send)
-                    p->to_send = NULL;
-                p = p->next;
-            }
-            pthread_mutex_unlock(&lista_connessioni.m);
-            status.status = INSTR_NOP;
+            restore_status();
         }
     }
     pthread_mutex_unlock(&status.m);

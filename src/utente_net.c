@@ -21,7 +21,7 @@ peer_list *recive_peer(int sock)
         ERR("recive_peer: ricezione peer fallita\n");
         return NULL;
     }
-    DBG("Arrivato peer, port: 0x%X, addr: 0x%X"
+    DBG("Arrivato peer, port: 0x%X, addr: 0x%X\n"
             , *dummy_port, *dummy_addr);
     if(!msglen) // Connessione chiusa
     {

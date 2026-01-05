@@ -300,7 +300,7 @@ void *prompt_cycle_function(void* self_info)
                         cmd_head, cmd_tail);
                 break;
         }   
-        // Se arrivato qui, c è un comando valido e il thread di 
+        // Se arrivato qui, c'è un comando valido e il thread di 
         // comunicazione con la lavagna ha ciò che serve perchè possa essere eseguito:
         // Posso inserire il comando nella cmdqueue
         pthread_mutex_lock(&cmd_queue_m);
