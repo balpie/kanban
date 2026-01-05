@@ -206,6 +206,7 @@ void show_card(task_card_t *cc)
     print_in_box(other, LAVAGNA_WIDTH, '|');
 }
 
+// rende str maiuscola. 
 void to_upper_case(char* str) 
 {
     for(char* ptr = str; *ptr != '\0'; ptr++)

@@ -153,8 +153,11 @@ void send_lavagna(int sock, lavagna_t *lavagna)
 
 // Viene passato aquired, ovvero il tempo trascorso
 // dall'ultima volta che l'utente ha acquisito una card in doing
-// La funzione valuta l'attuale stato del server
-uint8_t eval_status(time_t aquired)
+// La funzione valuta l'attuale stato del server, 
+// e in base ad esso sceglie che operazione dovrà essere mandata
+// al client. 
+// Possibili operazioni: ping, carta disponibile
+uint8_t chose_instr(time_t aquired)
 {
     // Ordine locking: per evitare deadlock: status->connessioni->lavagna
     // Ordine rilascio locking: lavagna->connessioni->status
@@ -364,6 +367,8 @@ int assign_card(uint16_t winner)
     return 1;
 }
 
+// Funzione chiamata una volta terminata un asta. Ripristina 
+// status e connessioni in modo che si possa effettuare un'altra asta
 void restore_status()
 {
         status.winner_arrived = 0;
@@ -462,8 +467,7 @@ void* serv_client(void* cl_info)
 
     for(;;)
     {
-        // istante in cui l'utente ha acquisito la card
-        instr_to_client[0] = eval_status(aquired); 
+        instr_to_client[0] = chose_instr(aquired); 
         if(old_instr_to_client != instr_to_client[0])
         {
             if(old_instr_to_client == INSTR_AVAL_CARD)

@@ -250,8 +250,9 @@ int main(int argc, char* argv[])
 
     // variabile per logging
     unsigned char old_instr_from_server = 0;
-        
-    for(;;) // Ciclo di comunicazione con server
+
+    // Ciclo di comunicazione con server
+    for(;;) 
     {
         peer_list *peers = NULL;
         unsigned char instr_to_server[2];
@@ -262,7 +263,8 @@ int main(int argc, char* argv[])
         { // caso lavagna disconnessa
             disconnect(server_sock);
         }
-        if(msglen < 0) // Se il server non mi ha mandato nulla
+        // Se il server non mi ha mandato nulla
+        if(msglen < 0) 
         {
             // Se è passato abbasatanza tempo, mando la prima card in doing
             if(send_if_done(server_sock))
