@@ -1,0 +1,54 @@
+\documentclass{article}
+
+\usepackage[italian]{babel}
+\usepackage[a4paper,top=2cm,bottom=2cm,left=3cm,right=3cm]{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\setcounter{secnumdepth}{0}
+
+\begin{document}
+
+% ----- Intestazione -----
+\begin{flushleft}
+\normalsize
+kanban -- Pietro Balestri -- 03/01/2026\\
+\rule{\textwidth}{0.4pt}
+\end{flushleft}
+
+\section{Introduzione}
+Per compilare sia il binario della lavagna che quello degli utenti è sufficiente chiamare \verb|make| a partire dalla directory del 
+progetto.
+Nella consegna del progetto è incluso lo script in bash \verb|usr.sh|, che equivale ad eseguire i client, passando come porta la successiva porta libera, a partire da \verb|5679|, oppure l'ultima porta utilizzata dallo script.
+\subsection{Filetree}
+I file sorgente sono all'interno della cartella src. 
+Il modulo \verb|common| e \verb|common_net| è compilato sia insieme a lavagna, che insieme a utente, e contiene funzioni di appoggio e costanti comuni a utente e lavagna.
+\section{Lavagna}
+Per la gestione delle connessioni è stato adottato un approccio multithreading. 
+In questo modo viene garantito l'isolamento della comunicazione con i client, 
+e in caso di operazioni bloccanti di un thread, gli altri possono continuare ad effettuare le operazioni possibili.
+L'approccio multiprocesso è stato scartato per via della minore praticità nella gestione di strutture dati comuni ai vari thread.
+Un thread per ogni client servito implica comunque un overhead di memoria, e inoltre la gestione
+delle strutture dati concorrenti in modo thread-safe può risultare non triviale. 
+\section{Strutture Dati}
+\subsection{Lavagna}
+La lavagna mantiene socket, porta, e indirizzo di tutti gli utenti attualmente connessi all'interno di una linked-list di connessioni.
+Anche la lavagna è una linked list di card, e le due strutture sono separate. La struttura dati delle connessioni è protetta da mutex, mentre lavagna è protetta da rwlock, in quanto si prevede che molte letture possano essere eseguite concorrentemente (per esempio se più utenti richiedono contemporaneamente di mostrare la lavagna).
+L'assenza di un collegamento tra le card della lavagna e le connessioni, garantisce maggiore flessibilità, in quanto per esempio, un utente può creare una card da mettere nella colonna done, effettuata da un utente non più connesso alla lavagna, o che dorvà connettersi.
+\subsection{Utente}
+Anche l'utente rappresenta la lavagna come una linked list, ma la richiede alla lavagna ogni volta che viene visualizzata. Seppure questo approccio si appoggia alle risorse di rete e introduce un certo grado di ridondanza, elimina completamente il problema di mantenere la lavagna sincronizzata in ogni utente. 
+Lo stesso ragionamento è stato applicato alla lista di peer, richiesta alla lavagna all'inizio di ogni asta.
+Ogni utente, in oltre, ha una lista di card, con all'interno tutte le proprie card in doing. Questa è gestita autonomamente, e non deve essere necessariamente sincronizzata con la lavagna del server. Nonostante questo permette teoricamente la presenza di inconsistenze, queste non verrebbero propagate alla lavagna, e si risolverebbero autonomamente, in quanto, dopo un lasso di tempo \verb|MAX_TIME_DOING|, l'utente tenterà di comunicare alla lavagna \verb|CARD_DONE|, e scarterà la prima carta all'interno della lista delle proprie carte in doing.
+L'utente è composto da due thread: uno che si occupa della comunicazione con la lavagna e con gli altri peer, e uno che si occupa dell'input-output.
+Per coordinare i due, l'eseguibile utente si appoggia a due strutture dati aggiuntive: \verb|created|, e \verb|message_queue|. La prima è un puntatore alla card creata dall'utente, e la seconda è una coda circolare di messaggi, raccolti dal thread I/O e inviati alla lavagna dal thread che si occupa della comunicazione. Entrambe le strutture dati sono protette da mutex.
+\section{Flusso di comunicazione}
+Per via della struttura dell'applicazione, l'evento che causa l'inizio di un asta può arrivare sia dall'utente, nel caso dell'arrivo di una \verb|CREATE_CARD| mentre si hanno due o più utenti connessi, o dalla lavagna, nel caso di una connessione del secondo utente, con una o più carte presenti nella colonna to-do.
+Questo impone che, se non si vuole decidere arbitrariamente uno dei due casi nel quale un utente deve aspettare un evento della lavagna, o viceversa, che sia possibile sia che l'utente comunichi alla lavagna una nuova card, che la lavagna possa richiedere agli utenti di effettuare un'asta. Vista la struttura multithreading del server, si è optato per assegnare un timeout alla ricezione dei messaggi da server a utente, e viceversa. 
+Da entrambe le parti, nel ciclo di comunicazione, si proverà a ricevere un messaggio, e se scattato il timeout, se presente un messaggio da inviare, questo verrà inviato, altrimenti si ripartirà dall'inizio del ciclo.
+Una soluzione alternativa ai socket con timeout sarebbe quella di inviare un messaggio con significato "nessuna istruzione", ma questa opzione è stata scartata in quanto sarebbe attesa attiva, e aggiungerebbe carico inutile alla rete. 
+\subsection{Tipo di messaggi}
+I messaggi sono contraddistinti da un header, di due byte, e opzionalmente da un payload.
+L'header, è suddiviso a sua volta nel primo byte, che indica l'operazione richiesta, e il significato del secondo byte, che è quasi sempre una dimensione, e se non lo è, non è significativo.
+Un protocollo così strutturato garantisce estensibilità: è possibile aggiungere un'operazione semplicemente assegnandogli un codice su 8 bit. 
+\end{document}

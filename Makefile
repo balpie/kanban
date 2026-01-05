@@ -12,7 +12,7 @@ utente: bin
 	gcc -o bin/utente -Wall -g src/utente*.c src/common*.c -lpthread
 
 doc: 
-	pandoc -o documentazione.pdf documentazione.md
+	pdflatex documentazione.tex -o documentazione.pdf 
 
 clean:
 	rm bin/*

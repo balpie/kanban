@@ -1,5 +1,7 @@
 *.vim
 *.pdf
+*.aux
+*.log
 log*
 .*
 test*

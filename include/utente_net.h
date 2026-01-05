@@ -9,7 +9,6 @@
 // Protocollo P2P kanban
 // I peer si ascolteranno dalla peer list in ordine di port.
 // Il primo peer a comunicare deve essere quello con la port più bassa tra tutti, e così via.
-// TODO: mancata trasmissione da parte di un peer
 struct peer_list_element{
     int sock;
     uint32_t addr;
