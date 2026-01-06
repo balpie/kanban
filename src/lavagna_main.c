@@ -71,6 +71,7 @@ int main(int argc, char *argv[])
     pthread_t server_processes; 
     pthread_mutex_init(&lista_connessioni.m, 0);
     pthread_cond_init(&status.cv, NULL);
+    pthread_cond_init(&status.fa, NULL);
 
     // creo il thread per interazione via terminale.
     // Questo è utile per verificare lo stato della lavagna senza

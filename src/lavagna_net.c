@@ -78,8 +78,6 @@ void send_conn_list(int sock, connection_l_e* escluso, uint8_t quanti)
     connection_l_e* p = lista_connessioni.head;
     for(; p != NULL && quanti > 0; p = p->next)
     {
-        DBG("send_conn_list(%u), to_send: %p, port: %u\n", 
-                escluso->port_id, p->to_send, p->port_id);
         if(p != escluso && p->to_send)
         {
             send_connection(sock, p);
@@ -90,7 +88,6 @@ void send_conn_list(int sock, connection_l_e* escluso, uint8_t quanti)
     // se li ho mandati tutti ho finito
     if(!quanti) 
     {
-        DBG("send_conn_list(%u) mandati %u\n", escluso->port_id, mandati);
         return;
     }
     ERR("send_connection_list: disconnessione improvvisa, mancano %u da mandare", quanti);

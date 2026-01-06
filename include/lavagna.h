@@ -26,8 +26,11 @@ struct server_status{
     uint8_t status; 
     // mutex per accesso a status 
     pthread_mutex_t m;      
-    // condition variable per attesa
+    // condition variable per attesa client pronti
     pthread_cond_t cv;      
+    // condition variable per attesa fine asta (in caso di aste
+    // di fila serve a evitare send duplicate)
+    pthread_cond_t fa;
     // indica il numero di utenti a cui è stata già mandata la card (valido se 
     // c'è una card da mandare e abbastanza utenti)
     uint8_t sent;           

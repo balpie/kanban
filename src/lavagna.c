@@ -162,13 +162,6 @@ void send_lavagna(int sock, lavagna_t *lavagna)
     }
 }
 
-// Viene passato aquired, ovvero il tempo trascorso
-// dall'ultima volta che l'utente ha acquisito una card in doing
-// La funzione valuta l'attuale stato del server, 
-// e in base ad esso sceglie che operazione dovrà essere mandata
-// al client. 
-// Possibili operazioni: ping, carta disponibile, nessuna_instruzione
-
 // prepara status e la lista di connessioni a una send 
 // fa il contrario di restore status
 // Necessita di lock su status, connessione, e lavagna
@@ -191,6 +184,12 @@ void prepare_send()
     status.status = INSTR_AVAL_CARD;
 }
 
+// Viene passato aquired, ovvero il tempo trascorso
+// dall'ultima volta che l'utente ha acquisito una card in doing
+// La funzione valuta l'attuale stato del server, 
+// e in base ad esso sceglie che operazione dovrà essere mandata
+// al client. 
+// Possibili operazioni: ping, carta disponibile, nessuna_instruzione
 uint8_t chose_instr(time_t aquired, connection_l_e *connessione)
 {
     if(aquired && (time(NULL) - aquired > TIME_PING))
@@ -403,6 +402,41 @@ void restore_status()
     status.status = INSTR_NOP;
 }
 
+uint16_t handle_p2p_result(connection_l_e *connessione, uint16_t winner)
+{
+    pthread_mutex_lock(&status.m);
+    status.winner_arrived++;
+    // Barriera per fine asta. 
+    // Senza si rischia di avere aste inconsistenti in caso
+    // di più card disponibili in to-do
+    TST("recv_p2p_result(%u): arrivo alla barrierera\n", connessione->port_id);
+    if(status.winner_arrived == status.total)
+    {
+        // Finchè non è finita l'asta, aspetto sulla condition variable fine asta
+        if(!assign_card(winner))
+        {
+            ERR("Utente %d ha passato un vincitore inesistente\n", connessione->port_id);
+        }
+        // A questo punto devo disfare le cose di status
+        // ordine lock: status, connessioni, lavagna
+        DBG("recv_p2p_result(%u): chiamata restore_status\n", connessione->port_id);
+        restore_status();
+        pthread_cond_broadcast(&status.fa); 
+    }
+    else
+    {
+        while(status.winner_arrived > 0)
+        {
+            TST("recv_p2p_result(%u): dentro la barrierera, arrived: %d, total: %d\n", 
+                    connessione->port_id, status.winner_arrived, status.total);
+            pthread_cond_wait(&status.fa, &status.m);
+        }
+    }   
+    // risveglio tutti
+    pthread_mutex_unlock(&status.m);
+    return winner;
+}
+
 // Ricevi dall'utente il risultato dell'asta. Se sei l'ultimo, disfai
 // status e inserisci nella lavagna. Ritorna il vincitore dell'asta
 uint16_t recv_p2p_result(connection_l_e* connessione)
@@ -423,26 +457,7 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
     memcpy((void*)&winner, instr_from_client, 2);
     winner = ntohs(winner); 
     LOG("recv_p2p_result: La task va a: %u\n", winner);
-    pthread_mutex_lock(&status.m);
-    // Se mi è arrivato il risultato dall'ultimo client, 
-    // ed il risultato è valido, ripulisco connessioni e status, 
-    // e aggiorno e mostro la lavagna a video
-    if(++status.winner_arrived == status.total)
-    {
-        if(!assign_card(winner))
-        {
-            ERR("Utente %d ha passato un vincitore inesistente\n", connessione->port_id);
-        }
-        // A questo punto devo disfare le cose di status
-        // ordine lock: status, connessioni, lavagna
-        if(status.total != 0)
-        {
-            DBG("recv_p2p_result(%u): chiamata restore_status\n", connessione->port_id);
-            restore_status();
-        }
-    }
-    pthread_mutex_unlock(&status.m);
-    return winner;
+    return handle_p2p_result(connessione, winner);
 }
 
 // ritorna l'id della card in doing dell'utente port, -1 se non presente
