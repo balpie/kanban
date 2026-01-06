@@ -325,7 +325,7 @@ void send_p2p_info(connection_l_e *connessione)
     LOG("send_p2p_info(%u): mando %u connessioni\n", connessione->port_id, instr_to_client[1]);
     send_conn_list(connessione->socket, connessione, status.total - 1);
     // mando la card, che è la prima di lavagna
-    LOG("send_p2p_info(%u): mando la card\n", connessione->port_id);
+    DBG("send_p2p_info(%u): mando la card %u\n", connessione->port_id, lavagna->card.id);
     send_card(connessione->socket, &lavagna->card);
     // aspetto su conditional variable di stato che tutti i thread abbiano mandato 
     // card e connessioni al proprio utente
@@ -481,22 +481,9 @@ void* serv_client(void* cl_info)
     // timestamp in cui la mia connessione ha acquisito l'ultima card che ha in doing
     time_t aquired = 0;
 
-    unsigned char old_instr_to_client = INSTR_NOP;
-
     for(;;)
     {
         instr_to_client[0] = chose_instr(aquired, connessione); 
-        if(old_instr_to_client != instr_to_client[0])
-        {
-            if(old_instr_to_client == INSTR_AVAL_CARD)
-            {
-                // se è finito il ciclo di p2p rimetto sent a 0 per il prossimo
-                sent = 0;    
-            }
-            LOG("serv_client(%u): cambio status, da %u a %u\n",
-                    connessione->port_id, old_instr_to_client, instr_to_client[0]);
-            old_instr_to_client = instr_to_client[0];
-        }
         if(instr_to_client[0] == INSTR_AVAL_CARD)
         {
             if(!sent)
@@ -516,15 +503,15 @@ void* serv_client(void* cl_info)
                     LOG("serv_client(%u) adesso misuro timestamp aquired\n", connessione->port_id);
                     aquired = time(NULL); // Faccio partire il timer per ping-pong, se non è ancora partito
                 }
+                // Aspetta su condition variable e poi rimetti sent a 0
                 LOG("serv_client(%u) rimetto sent a 0\n", connessione->port_id);
                 sent = 0;
                 continue;
             }
             else 
             {
-                // Questo è il caso in cui ho già mandato al 
-                // mio utente i dati, e ho già ricevuto la sua risposta
-                TST("serv_client(%u): usleep(500000), sent: %u\n", connessione->port_id, sent);
+                LOG("serv_client(%u): caso in cui sono già stati mandati i dati all'utente, "
+                        "ed è stata ricevuta una risposta\n", connessione->port_id);
                 usleep(500000); 
                 continue;
             }

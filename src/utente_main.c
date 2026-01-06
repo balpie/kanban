@@ -298,7 +298,7 @@ int main(int argc, char* argv[])
             LOG("main, card arriva di dimensione %u\n", instr_from_server[1]);
             task_card_t *contended_card = recive_card(server_sock, (uint8_t)instr_from_server[1]);
 
-            LOG("main, card ricevuta\n");
+            DBG("main, id card ricevuta: %u\n", contended_card->id);
 
             // Mando ack per dire al server che ho ricevuto card e peers
             instr_to_server[0] = instr_to_server[1] = INSTR_ACK_PEERS; 
