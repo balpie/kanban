@@ -636,3 +636,70 @@ void cleanup(int listener_sock, connection_l_e** list)
         remove_connection(list, (*list)->socket);
     }
 }
+
+char* get_desc(FILE *cfile)
+{
+    // Conto quanto è grande la descrizione
+    long inizio = ftell(cfile);
+    int c;
+    do
+    {
+        c = getc(cfile);
+    }while(c != EOF && c != '\n');
+    long fine = ftell(cfile);
+    unsigned len = fine - inizio;
+    if(len <= 1)
+    {
+        ERR("descrizione vuota\n");
+        return NULL;
+    }
+    LOG("dimensione stringa: %u\n", len);
+    if(fseek(cfile, inizio, SEEK_SET))
+    {
+        ERR("get_desc: errore fseek\n");
+        return NULL;
+    }
+    char* desc = (char*)malloc(len);
+    int offs = 0;
+    do
+    {
+        desc[offs++] = getc(cfile);
+    }while(desc[offs-1] != '\n' && desc[offs-1] != EOF);
+    desc[len-1] = '\0';
+    return desc;
+}
+
+task_card_t *parse_card(FILE *cfile)
+{
+    task_card_t *cc = (task_card_t *)malloc(sizeof(task_card_t));
+    int correct = fscanf(cfile, "%hhu\n%hhu\n%hu\n%lu\n", 
+            &cc->id, &cc->colonna, &cc->utente, &cc->last_modified);
+    if(correct == EOF)
+    {
+        free(cc);
+        LOG("Raggiunta la fine del file %s\n", INITIAL_CARDS);
+        return NULL;
+    }
+    if(correct != 4)
+    {
+        ERR("Formato di %s errato, abort\n", INITIAL_CARDS);
+        exit(-1);
+    }
+    cc->desc = get_desc(cfile);
+    return cc;
+}
+
+int init_lavagna(){
+    task_card_t* card;
+    FILE *cards_file = fopen(INITIAL_CARDS, "r");
+    if(!cards_file)
+    {
+        return 0;
+    }
+    while((card = parse_card(cards_file))){
+        insert_into_lavagna(&lavagna, card);
+        free(card);
+    }
+    return 1;
+}
+

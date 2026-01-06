@@ -11,8 +11,5 @@ lavagna: bin
 utente: bin
 	gcc -o bin/utente -Wall -g src/utente*.c src/common*.c -lpthread
 
-doc: 
-	pdflatex documentazione.tex -o documentazione.pdf 
-
 clean:
 	rm bin/*

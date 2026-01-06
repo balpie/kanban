@@ -185,10 +185,10 @@ void libera_lavagna(lavagna_t* ll)
 // e mette delimiter prima e dopo essere andato a capo
 void show_card(task_card_t *cc)
 {
-    char timebuf[9];
+    char timebuf[17];
     char other[MAX_DIM_DESC + 5];
     struct tm *lastmod = localtime(&cc->last_modified);
-    strftime(timebuf, 9, "%H:%M:%S", lastmod);
+    strftime(timebuf, 17, "%H:%M %d-%m-%Y", lastmod);
     sprintf(other, "card: %u", cc->id);
     print_in_box(other, LAVAGNA_WIDTH, '|');
     if(VALID_PORT(cc->utente))

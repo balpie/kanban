@@ -51,4 +51,6 @@ Una soluzione alternativa ai socket con timeout sarebbe quella di inviare un mes
 I messaggi sono contraddistinti da un header, di due byte, e opzionalmente da un payload.
 L'header, è suddiviso a sua volta nel primo byte, che indica l'operazione richiesta, e il significato del secondo byte, che è quasi sempre una dimensione, e se non lo è, non è significativo.
 Un protocollo così strutturato garantisce estensibilità: è possibile aggiungere un'operazione semplicemente assegnandogli un codice su 8 bit. 
+Allo stesso tempo il numero di operazioni è limitato a 256, ma è stato ritenuto un range sufficiente per l'applicazione, considerando anche eventuali estensioni future.
+Il fatto che i codici di operazioni siano numerici e non mnemonici rende l'applicazione meno leggibile da esseri umani, ma il problema è mitigato dalla natura semplice delle intereazioni tra lavagna e utenti.
 \end{document}

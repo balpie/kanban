@@ -49,6 +49,15 @@ int main(int argc, char *argv[])
         fflush(stderr);
     }
     // Inizializzazione strutture dati
+    LOG("Se esiste, aggiungo le card del file %s\n", INITIAL_CARDS);
+    if(init_lavagna())
+    {
+        LOG("Lavagna inizializzata correttamente\n");
+    }
+    else
+    {
+        LOG("Lavagna vuota");
+    }
     pthread_mutex_init(&status.m, NULL);
     pthread_rwlock_init(&m_lavagna, NULL);
     status.n_connessioni = 0;

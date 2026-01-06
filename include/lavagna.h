@@ -4,6 +4,7 @@
 
 // nome logfile in caso non venga passato argomento -d
 #define LOGFILE_NAME "log/log_lav"
+#define INITIAL_CARDS "res/cards"
 
 // Tempi in secondi
 // attesa tra una richiesta di ping e un altra
@@ -66,5 +67,8 @@ void cleanup(int, connection_l_e**);
 
 // manda tutte le card via socket
 void send_lavagna(int, lavagna_t*);
+
+// inizializza la lavagna con le card presenti nel file INITIAL_CARDS
+int init_lavagna();
 
 #endif
