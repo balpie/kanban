@@ -9,6 +9,7 @@
 #define INSTR_NOP 0             // no card disponibili in todo, quindi l'utente non ha nulla da fa
 #define INSTR_EMPTY 1           // Lista da mandare vuota
 #define INSTR_TAKEN 2           // port o task id
+#define INSTR_WAIT 11           // Registrazione rifiutata per asta in corso
 #define INSTR_ACK 3             // card o utente ricevuto validi e registrati 
 #define INSTR_AVAL_CARD 4       // presenti almeno 2 utenti, e almeno 1 card in colonna TO-DO
                                 // parte il meccanismo di assegnamento della card

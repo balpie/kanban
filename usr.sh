@@ -10,4 +10,4 @@ fi
 port=$(tail -n 1 $USR_FILE)
 echo $(( $port + 1)) > $USR_FILE
 echo creo utente con porta $port 
-./bin/utente $port 
+./bin/utente $port -d

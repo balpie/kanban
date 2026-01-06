@@ -33,8 +33,6 @@ void* prompt_cycle(void *arg)
             case CMD_SHOW_LAVAGNA:
                 pthread_rwlock_rdlock(&m_lavagna);
                 show_lavagna(lavagna);
-                printf("\nlavagna> ");
-                fflush(stdout);
                 pthread_rwlock_unlock(&m_lavagna);
                 break;
             case CMD_INVALID:
@@ -95,16 +93,28 @@ connection_l_e* registra_client(int socket, uint32_t addr)
         close(socket);
         return NULL;
     }
+    pthread_mutex_lock(&status.m);
     pthread_mutex_lock(&lista_connessioni.m);
     // se c'è già un utente con tale id gli comunico che l'iscrizione non è andata a buon fine
     if(get_connection(ntohs(port))) 
     {
         pthread_mutex_unlock(&lista_connessioni.m);
+        pthread_mutex_unlock(&status.m);
         instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN; 
         send_msg(socket, instr_to_client, 2);
         close(socket);
         return NULL;
     }
+    if(status.status == INSTR_AVAL_CARD)
+    {
+        pthread_mutex_unlock(&lista_connessioni.m);
+        pthread_mutex_unlock(&status.m);
+        instr_to_client[0] = instr_to_client[1] = INSTR_WAIT; 
+        send_msg(socket, instr_to_client, 2);
+        close(socket);
+        return NULL;
+    }
+    pthread_mutex_unlock(&status.m);
     // Comunico al client che l'iscrizione è andata a buon fine
     instr_to_client[0] = instr_to_client[1] = INSTR_ACK; 
     send_msg(socket, instr_to_client, 2);
@@ -112,6 +122,7 @@ connection_l_e* registra_client(int socket, uint32_t addr)
     pthread_mutex_unlock(&lista_connessioni.m);
     pthread_mutex_lock(&status.m);
     status.n_connessioni++;
+    LOG("listener: numero connessioni %d\n", status.n_connessioni + 1);
     pthread_mutex_unlock(&status.m);
     return conn; 
 }
@@ -156,11 +167,32 @@ void send_lavagna(int sock, lavagna_t *lavagna)
 // La funzione valuta l'attuale stato del server, 
 // e in base ad esso sceglie che operazione dovrà essere mandata
 // al client. 
-// Possibili operazioni: ping, carta disponibile
-uint8_t chose_instr(time_t aquired)
+// Possibili operazioni: ping, carta disponibile, nessuna_instruzione
+
+// prepara status e la lista di connessioni a una send 
+// fa il contrario di restore status
+// Necessita di lock su status, connessione, e lavagna
+void prepare_send()
 {
-    // Ordine locking: per evitare deadlock: status->connessioni->lavagna
-    // Ordine rilascio locking: lavagna->connessioni->status
+    int count = 0;
+    connection_l_e *p = lista_connessioni.head;
+    while(p)
+    {
+        p->to_send = &lavagna->card;
+        p = p->next;
+        count++;
+    }
+    // assegno a total il numero di connessioni relative all'asta
+    status.total = count;
+    // assegno a sent 0 (numero di client pronti a fare l'asta)
+    status.sent = 0;
+    // setto lo status a INSTR_AVAL_CARD, e successivamente
+    // comunico ai client che devono fare l'asta
+    status.status = INSTR_AVAL_CARD;
+}
+
+uint8_t chose_instr(time_t aquired, connection_l_e *connessione)
+{
     if(aquired && (time(NULL) - aquired > TIME_PING))
     {
         // Se è passato più di TIME_PING il thread deve mandare il ping alla
@@ -169,13 +201,9 @@ uint8_t chose_instr(time_t aquired)
         // è valido solo per il thread chiamante
         return INSTR_PING; 
     }
+    // Ordine locking: per evitare deadlock: status->connessioni->lavagna
+    // Ordine rilascio locking: lavagna->connessioni->status
     pthread_mutex_lock(&status.m);
-    // Se lo stato è già questo, c'è già una avaliable card che sta essendo processata
-    if(status.status == INSTR_AVAL_CARD)
-    {
-        pthread_mutex_unlock(&status.m);
-        return INSTR_AVAL_CARD;
-    }
     pthread_mutex_lock(&lista_connessioni.m);
     pthread_rwlock_rdlock(&m_lavagna);
     // altrimenti si valuta se è presente una card assegnabile
@@ -184,23 +212,12 @@ uint8_t chose_instr(time_t aquired)
         // ... e se ci sono almeno due connessioni attive
         if(status.n_connessioni >= 2)
         {
+            if(!connessione->to_send)
+            {
+                prepare_send();
+            }
             // alle connessioni presenti auttualmente metto come
             // tosend la prima card di todo_list
-            int count = 0;
-            connection_l_e *p = lista_connessioni.head;
-            while(p)
-            {
-                p->to_send = &lavagna->card;
-                p = p->next;
-                count++;
-            }
-            // assegno a total il numero di connessioni relative all'asta
-            status.total = count;
-            // assegno a sent 0 (numero di client pronti a fare l'asta)
-            status.sent = 0;
-            // setto lo status a INSTR_AVAL_CARD, e successivamente
-            // comunico ai client che devono fare l'asta
-            status.status = INSTR_AVAL_CARD;
             pthread_rwlock_unlock(&m_lavagna);
             pthread_mutex_unlock(&lista_connessioni.m);
             pthread_mutex_unlock(&status.m);
@@ -328,9 +345,9 @@ void send_p2p_info(connection_l_e *connessione)
 
     pthread_mutex_lock(&status.m);
     status.sent++;
-    LOG("send_p2p_info: total %u\tsent %u\n", status.total, status.sent);
+    LOG("send_p2p_info(%u): status.total %u\tstatus.sent %u\n", connessione->port_id ,status.total, status.sent);
     // Condition variable per sincronizzare tutti i client
-    while(status.total != status.sent)
+    while(status.sent < status.total)
     {
         pthread_cond_wait(&status.cv, &status.m);
     }
@@ -371,19 +388,19 @@ int assign_card(uint16_t winner)
 // status e connessioni in modo che si possa effettuare un'altra asta
 void restore_status()
 {
-        status.winner_arrived = 0;
-        status.total = 0;
-        status.sent = 0;
-        pthread_mutex_lock(&lista_connessioni.m);
-        connection_l_e *p = lista_connessioni.head;
-        while(p)
-        {
-            if(p->to_send)
-                p->to_send = NULL;
-            p = p->next;
-        }
-        pthread_mutex_unlock(&lista_connessioni.m);
-        status.status = INSTR_NOP;
+    status.winner_arrived = 0;
+    status.total = 0;
+    status.sent = 0;
+    pthread_mutex_lock(&lista_connessioni.m);
+    connection_l_e *p = lista_connessioni.head;
+    while(p)
+    {
+        if(p->to_send)
+            p->to_send = NULL;
+        p = p->next;
+    }
+    pthread_mutex_unlock(&lista_connessioni.m);
+    status.status = INSTR_NOP;
 }
 
 // Ricevi dall'utente il risultato dell'asta. Se sei l'ultimo, disfai
@@ -420,6 +437,7 @@ uint16_t recv_p2p_result(connection_l_e* connessione)
         // ordine lock: status, connessioni, lavagna
         if(status.total != 0)
         {
+            DBG("recv_p2p_result(%u): chiamata restore_status\n", connessione->port_id);
             restore_status();
         }
     }
@@ -467,7 +485,7 @@ void* serv_client(void* cl_info)
 
     for(;;)
     {
-        instr_to_client[0] = chose_instr(aquired); 
+        instr_to_client[0] = chose_instr(aquired, connessione); 
         if(old_instr_to_client != instr_to_client[0])
         {
             if(old_instr_to_client == INSTR_AVAL_CARD)
@@ -499,10 +517,14 @@ void* serv_client(void* cl_info)
                     aquired = time(NULL); // Faccio partire il timer per ping-pong, se non è ancora partito
                 }
                 LOG("serv_client(%u) rimetto sent a 0\n", connessione->port_id);
+                sent = 0;
                 continue;
             }
             else 
-            {   
+            {
+                // Questo è il caso in cui ho già mandato al 
+                // mio utente i dati, e ho già ricevuto la sua risposta
+                TST("serv_client(%u): usleep(500000), sent: %u\n", connessione->port_id, sent);
                 usleep(500000); 
                 continue;
             }

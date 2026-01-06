@@ -101,6 +101,13 @@ int registra_utente(int port)
             close(listener);
             exit(-1);
         }
+        if(instr_from_server[1] == INSTR_WAIT)
+        {
+            printf(">! registrazione fallita: asta in corso\n");
+            close(sd);
+            close(listener);
+            exit(-1);
+        }
     }
     else
     {

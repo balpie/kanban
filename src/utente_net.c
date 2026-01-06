@@ -130,16 +130,11 @@ int send_cost(peer_list* lst, uint8_t cost)
             struct sockaddr_in addr_peer;
             memset(&addr_peer, 0, sizeof(addr_peer));
             addr_peer.sin_port = htons(lst->port);
-            LOG("send_cost: provo a fare la connect con %u\n\taddr %u\n",
-                    ntohs(addr_peer.sin_port), lst->addr);
             addr_peer.sin_addr.s_addr = htonl(lst->addr);
             addr_peer.sin_family = AF_INET;
 
             // Le seguienti 4 righe servono esclusivamente al logging e debug
-            char ip[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &addr_peer.sin_addr, ip, sizeof(ip));
-            LOG("connect -> %s:%u (raw addr=%u)\n",
-                ip, lst->port, lst->addr);
+            LOG("connect -> %u:%x\n", lst->port, lst->addr);
 
             if(connect(lst->sock, (struct sockaddr*)&addr_peer, sizeof(addr_peer)))
             {

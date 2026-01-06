@@ -99,7 +99,6 @@ int main(int argc, char *argv[])
             // aspetto che qualcuno si disconnetta prima di accettare una nuova conessione
             sleep(1);
         }
-        LOG("listener: numero connessioni %d\n", status.n_connessioni + 1);
     }
     return 0;
 }
