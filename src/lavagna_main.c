@@ -22,8 +22,8 @@ pthread_rwlock_t m_lavagna;
 // che l'utente non abbia nessun istruzione
 // da inoltrare alla lavagna
 struct timeval timeout_recv = {
-    .tv_sec = 1,
-    .tv_usec = 0
+    .tv_sec = 0,
+    .tv_usec = 250000
 };      
 
 // La funzione main si occupa di inizializzare le strutture dati e 

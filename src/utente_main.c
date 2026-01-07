@@ -33,8 +33,8 @@ int listener;
 
 // timeout socket con lavagna
 struct timeval timeout_recv = {
-    .tv_sec = 1,
-    .tv_usec = 0
+    .tv_sec = 0,
+    .tv_usec = 250000
 };      
 // 3 secondi massimi di attesa in ingresso e in uscita ai socket
 struct timeval timeout_p2p = {

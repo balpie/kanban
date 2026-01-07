@@ -18,39 +18,58 @@ kanban -- Pietro Balestri -- 03/01/2026\\
 \end{flushleft}
 
 \section{Introduzione}
-Per compilare sia il binario della lavagna che quello degli utenti è sufficiente chiamare \verb|make| a partire dalla directory del 
-progetto.
-Nella consegna del progetto è incluso lo script in bash \verb|usr.sh|, che equivale ad eseguire i client, passando come porta la successiva porta libera, a partire da \verb|5679|, oppure l'ultima porta utilizzata dallo script.
-\subsection{Filetree}
-I file sorgente sono all'interno della cartella src. 
-Il modulo \verb|common| e \verb|common_net| è compilato sia insieme a lavagna, che insieme a utente, e contiene funzioni di appoggio e costanti comuni a utente e lavagna.
-\section{Lavagna}
 Per la gestione delle connessioni è stato adottato un approccio multithreading. 
 In questo modo viene garantito l'isolamento della comunicazione con i client, 
 e in caso di operazioni bloccanti di un thread, gli altri possono continuare ad effettuare le operazioni possibili.
 L'approccio multiprocesso è stato scartato per via della minore praticità nella gestione di strutture dati comuni ai vari thread.
-Un thread per ogni client servito implica comunque un overhead di memoria, e inoltre la gestione
-delle strutture dati concorrenti in modo thread-safe può risultare non triviale. 
+Un thread per ogni client servito implica comunque un overhead di memoria, e inoltre la gestione delle strutture dati concorrenti in modo thread-safe può risultare non triviale. \\
+In questo documento, per evitare ambiguità, \textit{lavagna} indicherà la struttura dati contenente le card suddivise in colonne, mentre \textit{server} indicherà il processo corrispondente all'eseguibile di nome \verb|lavagna|
+\subsection{Compilazione}
+Per compilare sia il binario della lavagna che quello degli utenti è sufficiente chiamare \verb|make| a partire dalla directory del 
+progetto.
+\subsection{Filetree}
+I file sorgente sono all'interno della cartella \verb|src|. 
+Il codice è stato diviso in 3 gruppi: codice comune, codice di lavagna, e codice di utente. Per ognuno dei gruppi c'è un ulteriore divisione tra codice di rete e non.
+I binari compariranno nella cartella \verb|bin| dopo la compilazione.
 \section{Strutture Dati}
-\subsection{Lavagna}
-La lavagna mantiene socket, porta, e indirizzo di tutti gli utenti attualmente connessi all'interno di una linked-list di connessioni.
-Anche la lavagna è una linked list di card, e le due strutture sono separate. La struttura dati delle connessioni è protetta da mutex, mentre lavagna è protetta da rwlock, in quanto si prevede che molte letture possano essere eseguite concorrentemente (per esempio se più utenti richiedono contemporaneamente di mostrare la lavagna).
-L'assenza di un collegamento tra le card della lavagna e le connessioni, garantisce maggiore flessibilità, in quanto per esempio, un utente può creare una card da mettere nella colonna done, effettuata da un utente non più connesso alla lavagna, o che dorvà connettersi.
+\subsection{Server}
+Il server mantiene socket, porta, e indirizzo di tutti gli utenti attualmente connessi all'interno di una linked-list di connessioni.
+Anche la lavagna è una linked list di card, e le due strutture sono separate. 
+La struttura dati delle connessioni è protetta da mutex, mentre lavagna è protetta da rwlock, per permettere che più letture possano essere eseguite concorrentemente. 
+L'assenza di un collegamento tra le card della lavagna e le connessioni, garantisce maggiore flessibilità. Per esempio, un utente può creare una card da mettere nella colonna done, nonostante l'attuale assenza dell'utente che l'ha compiuta.\\
+Per garantire una gestione sincrona delle aste a parte del server, vengono usate due condition variable: una per il termine dell'asta, e una per l'inizio.
 \subsection{Utente}
-Anche l'utente rappresenta la lavagna come una linked list, ma la richiede alla lavagna ogni volta che viene visualizzata. Seppure questo approccio si appoggia alle risorse di rete e introduce un certo grado di ridondanza, elimina completamente il problema di mantenere la lavagna sincronizzata in ogni utente. 
-Lo stesso ragionamento è stato applicato alla lista di peer, richiesta alla lavagna all'inizio di ogni asta.
-Ogni utente, in oltre, ha una lista di card, con all'interno tutte le proprie card in doing. Questa è gestita autonomamente, e non deve essere necessariamente sincronizzata con la lavagna del server. Nonostante questo permette teoricamente la presenza di inconsistenze, queste non verrebbero propagate alla lavagna, e si risolverebbero autonomamente, in quanto, dopo un lasso di tempo \verb|MAX_TIME_DOING|, l'utente tenterà di comunicare alla lavagna \verb|CARD_DONE|, e scarterà la prima carta all'interno della lista delle proprie carte in doing.
-L'utente è composto da due thread: uno che si occupa della comunicazione con la lavagna e con gli altri peer, e uno che si occupa dell'input-output.
-Per coordinare i due, l'eseguibile utente si appoggia a due strutture dati aggiuntive: \verb|created|, e \verb|message_queue|. La prima è un puntatore alla card creata dall'utente, e la seconda è una coda circolare di messaggi, raccolti dal thread I/O e inviati alla lavagna dal thread che si occupa della comunicazione. Entrambe le strutture dati sono protette da mutex.
+Anche l'utente rappresenta la lavagna come una linked list, ma la richiede al server ogni volta che viene visualizzata. Seppure questo approccio si appoggia alle risorse di rete e introduce un certo grado di ridondanza, elimina completamente il problema di mantenere la lavagna sincronizzata in ogni utente. 
+Lo stesso ragionamento è stato applicato alla lista di peer, richiesta al server all'inizio di ogni asta.
+Ogni utente, in oltre, ha una lista di card, con all'interno tutte le proprie card in doing. Questa è gestita autonomamente, e non deve essere necessariamente sincronizzata con la lavagna del server. Nonostante questo permette teoricamente la presenza di inconsistenze, queste non verrebbero propagate al server, per via della sanificazione delle richieste effettuata in esso.
+L'utente è composto da due thread: uno che si occupa della comunicazione con la lavagna e con gli altri peer, e uno che si occupa dell'input-output su terminale.
+Per coordinare i due, l'eseguibile utente si appoggia a due strutture dati aggiuntive: \verb|created|, e \verb|message_queue|. La prima è un puntatore alla card creata dall'utente, e la seconda è una coda circolare di messaggi, raccolti dal thread I/O e inviati al server dal thread che si occupa della comunicazione. Entrambe le strutture dati sono protette da mutex.
 \section{Flusso di comunicazione}
-Per via della struttura dell'applicazione, l'evento che causa l'inizio di un asta può arrivare sia dall'utente, nel caso dell'arrivo di una \verb|CREATE_CARD| mentre si hanno due o più utenti connessi, o dalla lavagna, nel caso di una connessione del secondo utente, con una o più carte presenti nella colonna to-do.
-Questo impone che, se non si vuole decidere arbitrariamente uno dei due casi nel quale un utente deve aspettare un evento della lavagna, o viceversa, che sia possibile sia che l'utente comunichi alla lavagna una nuova card, che la lavagna possa richiedere agli utenti di effettuare un'asta. Vista la struttura multithreading del server, si è optato per assegnare un timeout alla ricezione dei messaggi da server a utente, e viceversa. 
-Da entrambe le parti, nel ciclo di comunicazione, si proverà a ricevere un messaggio, e se scattato il timeout, se presente un messaggio da inviare, questo verrà inviato, altrimenti si ripartirà dall'inizio del ciclo.
-Una soluzione alternativa ai socket con timeout sarebbe quella di inviare un messaggio con significato "nessuna istruzione", ma questa opzione è stata scartata in quanto sarebbe attesa attiva, e aggiungerebbe carico inutile alla rete. 
-\subsection{Tipo di messaggi}
+L'evento che causa l'inizio di un asta può arrivare sia dall'utente, nel caso dell'arrivo di una \verb|CREATE_CARD| mentre si hanno due o più utenti connessi, che dal server, nel caso di una connessione del secondo utente, con una o più carte presenti nella colonna to-do.
+Questo impone che debba essere possibile sia che l'utente comunichi al server una nuova card, che il server possa richiedere agli utenti di effettuare un'asta, in qualsiasi momento. \\
+Per fare fronte a queste esigenze si è optato per assegnare un timeout alla ricezione dei messaggi da server a utente, e viceversa, di fatto implementando polling con timeout da entrambe le parti.
+Una soluzione alternativa ai socket con timeout sarebbe quella di inviare un messaggio con significato "nessuna istruzione", ma questa opzione è stata scartata in quanto sarebbe attesa attiva, e aggiungerebbe carico inutile alla rete.
+Era possibile anche utilizzare la \verb|select| con timeout, ma anche quest'opzione è stata scartata, vista la maggiore complessità e minore leggibilità. 
+\subsection{Messaggi Server-Utenti}
 I messaggi sono contraddistinti da un header, di due byte, e opzionalmente da un payload.
-L'header, è suddiviso a sua volta nel primo byte, che indica l'operazione richiesta, e il significato del secondo byte, che è quasi sempre una dimensione, e se non lo è, non è significativo.
+Nell'header il primo byte è un codice che indica l'operazione richiesta e implicitamente il significato del secondo byte. 
+Quest'ultimo quasi sempre è una dimensione, e se non lo è, non è significativo.
 Un protocollo così strutturato garantisce estensibilità: è possibile aggiungere un'operazione semplicemente assegnandogli un codice su 8 bit. 
-Allo stesso tempo il numero di operazioni è limitato a 256, ma è stato ritenuto un range sufficiente per l'applicazione, considerando anche eventuali estensioni future.
-Il fatto che i codici di operazioni siano numerici e non mnemonici rende l'applicazione meno leggibile da esseri umani, ma il problema è mitigato dalla natura semplice delle intereazioni tra lavagna e utenti.
+La quantità di possibili operazioni è limitata a 256, ma questo è stato ritenuto un numero sufficiente per l'applicazione.
+Il fatto che i codici di operazioni siano numerici e non mnemonici rende l'applicazione meno leggibile da esseri umani, ma il problema è mitigato dalla natura semplice delle intereazioni tra server e utenti.
+Per lo scambio delle card, il protocollo implementato è di tipo binario.
+In questo modo, è minimo l'overhead dell'interpretazione dei messaggi. 
+\subsection{Messaggi Utenti-Utenti}
+Gli utenti inviano tra loro esclusivamente il proprio costo relativo all'asta corrente, su un singolo byte. L'invio avviene in ordine di porta: l'utente con la porta più alta è il primo ad inviare il proprio costo a tutti gli altri, e così via. Le connessioni sono iniziate da chi deve inviare il messaggio, e vengono chiuse al termine di ogni asta e riaperte all'inizio.\\
+Una criticità del protocollo è la ridondaza: con $n$ client, i relativi messaggi saranno $O(n^2)$.
+Inoltre, in questa specifica implementazione del protocollo, le continue connessioni e disconnessioni TCP possono costituire uno spreco di risorse, per via del triplice handshake iniziale e delle risorse ad esse allocate. Per ovviare a questo problema si potrebbe implementare una lista persistente di peer, modificata solo nel caso di una disconnessione, o dell'arrivo di un nuovo peer.
+La complessità aggiunta di questa soluzione è stata valutata superare i relativi benefici, quindi l'idea è stata scartata. 
+Come meccanismo di fallback, è sato dato ai socket dei peer, sia per la ricezione che per l'invio dei messaggi, un timeout, in modo da evitare deadlock in caso di disconnessione inaspettata di un peer durante l'asta.
+\vfill
+\hrule
+\vspace{0.5em}
+{\footnotesize
+Nella consegna del progetto è incluso lo script in bash \verb|usr.sh|, che equivale ad eseguire i client, passando come porta la successiva porta libera, a partire da \verb|5679|, oppure l'ultima porta utilizzata dallo script.\\
+Inoltre, i file di log sono pensati per essere mostrati a video con \verb|cat|
+}
 \end{document}
