@@ -57,7 +57,7 @@ void print_top_bottom(const char* str, char del, char mid, int len)
     }
     else
     {
-        start = len/2 - strlen(str)/2;
+        start = len/2 - strlen(str)/2 - 1;
     }
     putchar(del);
     for(int i = 0; i < len; i++)
