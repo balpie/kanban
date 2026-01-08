@@ -315,7 +315,6 @@ int main(int argc, char* argv[])
             }
 
             // p2p()...
-            // funzione di utilità per fine di testing e debug
 
             print_peers(peers);
             uint16_t winner = NO_USR;

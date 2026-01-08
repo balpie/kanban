@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Per lanciare lo script è necessario che lavagna
+# sia già in esecuzione
 
 USR_FILE="./.curr_users"
 
@@ -7,7 +10,11 @@ then
     echo 5679 > $USR_FILE
 fi
 
+# prendo la porta da utilizzare dal file generato dallo script
 port=$(tail -n 1 $USR_FILE)
-echo $(( $port + 1)) > $USR_FILE
-echo creo utente con porta $port 
-./bin/utente $port -d
+
+# mi scrivo la porta da usare nella successiva esecuzione 
+echo $(( $port + 1 )) > $USR_FILE
+
+# Creo utente con una porta non utilizzata
+./bin/utente $port 

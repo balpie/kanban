@@ -28,7 +28,7 @@
 #define INSTR_ACK_PEERS 9       
 #define INSTR_CARD_DONE 10
 
-#define LAVAGNA_PORT 5678
+#define LAVAGNA_PORT 5679
 #define LAVAGNA_ADDR "127.0.0.1"
 
 #include <sys/socket.h>

@@ -32,13 +32,9 @@ void print_in_box(char* str, size_t size, char delimiter)
     }
     while(*str)
     {
+        putchar(delimiter);
         for(size_t j = 0; j < size; j++) 
         {
-            if(j == 0 || j == size-1)
-            {
-                putchar(delimiter);
-                continue;
-            }
             if(*str)
             {
                 putchar(*str);
@@ -47,8 +43,37 @@ void print_in_box(char* str, size_t size, char delimiter)
             }
             putchar(' ');
         }
+        putchar(delimiter);
         putchar('\n');
     }
+}
+
+void print_top_bottom(const char* str, char del, char mid, int len)
+{
+    int start;
+    if(!str)
+    {
+        start = 0;
+    }
+    else
+    {
+        start = len/2 - strlen(str)/2;
+    }
+    putchar(del);
+    for(int i = 0; i < len; i++)
+    {
+        if(start && *str && i > start)
+        {
+            putchar(*str);
+            str++;
+        }
+        else
+        {
+            putchar(mid);
+        }
+    }
+    putchar(del);
+    putchar('\n');
 }
 
 // Mostra la lavagna, assumendo ordinamento crescente rispetto alla colonna 
@@ -57,12 +82,12 @@ void show_lavagna(lavagna_t *l)
     putchar('\n');
     if(!l)
     {
-        printf("+-----------------------+\n");
-        printf("|     LAVAGNA VUOTA     |\n");
-        printf("+-----------------------+\n");
+        print_top_bottom(NULL, '+', '-', LAVAGNA_WIDTH);
+        print_top_bottom("LAVAGNA VUOTA", '+', ' ', LAVAGNA_WIDTH);
+        print_top_bottom(NULL, '+', '-', LAVAGNA_WIDTH);
         return;
     }
-    printf("+---------TODO----------+\n");
+    print_top_bottom("TODO", '+', '-',  LAVAGNA_WIDTH);
     if(!(l && l->card.colonna == TODO_COL))
     {
         print_in_box(NULL, LAVAGNA_WIDTH, '|');
@@ -76,7 +101,7 @@ void show_lavagna(lavagna_t *l)
             print_in_box(NULL, LAVAGNA_WIDTH, '|');
         }
     }
-    printf("+---------DOING---------+\n");
+    print_top_bottom("DOING", '+', '-', LAVAGNA_WIDTH);
     if(!(l && l->card.colonna == DOING_COL))
     {
         print_in_box(NULL, LAVAGNA_WIDTH, '|');
@@ -90,7 +115,7 @@ void show_lavagna(lavagna_t *l)
             print_in_box(NULL, LAVAGNA_WIDTH, '|');
         }
     }
-    printf("+---------DONE----------+\n");
+    print_top_bottom("DONE", '+', '-', LAVAGNA_WIDTH);
     if(!(l && l->card.colonna == DONE_COL))
     {
         print_in_box(NULL, LAVAGNA_WIDTH, '|');
@@ -104,7 +129,7 @@ void show_lavagna(lavagna_t *l)
             print_in_box(NULL, LAVAGNA_WIDTH, '|');
         }
     }
-    printf("+-----------------------+\n");
+    print_top_bottom(NULL, '+', '-', LAVAGNA_WIDTH);
     return;
 }
 

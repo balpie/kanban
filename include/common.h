@@ -50,7 +50,7 @@
 #define VALID_PORT(pp) ((pp > 5678) ? (1) : (0))
 
 // Dimensione orizzontale della lavagna su terminale (inclusi delimitatori)
-#define LAVAGNA_WIDTH 25
+#define LAVAGNA_WIDTH 30
 
 struct task_card_tipo { 
     uint8_t id; 
