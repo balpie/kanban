@@ -114,13 +114,11 @@ connection_l_e* registra_client(int socket, uint32_t addr)
         close(socket);
         return NULL;
     }
-    pthread_mutex_unlock(&status.m);
     // Comunico al client che l'iscrizione è andata a buon fine
     instr_to_client[0] = instr_to_client[1] = INSTR_ACK; 
     send_msg(socket, instr_to_client, 2);
     connection_l_e* conn = insert_connection(&(lista_connessioni.head), socket, ntohs(port), ntohl(addr)); 
     pthread_mutex_unlock(&lista_connessioni.m);
-    pthread_mutex_lock(&status.m);
     status.n_connessioni++;
     LOG("listener: numero connessioni %d\n", status.n_connessioni + 1);
     pthread_mutex_unlock(&status.m);
@@ -223,9 +221,9 @@ uint8_t chose_instr(time_t aquired, connection_l_e *connessione)
             return INSTR_AVAL_CARD;
         }
     }
-    pthread_mutex_unlock(&status.m);
-    pthread_mutex_unlock(&lista_connessioni.m);
     pthread_rwlock_unlock(&m_lavagna);
+    pthread_mutex_unlock(&lista_connessioni.m);
+    pthread_mutex_unlock(&status.m);
     // altrimenti lo status rimane invariato
     return status.status; 
 }
@@ -640,8 +638,10 @@ void stampa_utenti_connessi(connection_l_e *head)
     {
         case INSTR_NOP:
             printf("niente da fare\n");
+            break;
         case INSTR_AVAL_CARD:
             printf("card disponibile per asta\n");
+            break;
     }
     printf("<< ci sono %d utenti connessi in totale: \n", status.n_connessioni);
     while(head!= NULL)
