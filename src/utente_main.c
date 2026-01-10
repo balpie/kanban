@@ -12,6 +12,10 @@
 
 lavagna_t *lavagna = NULL;
 
+pthread_t worker;
+bool worker_occupato = false;
+pthread_mutex_t worker_occ_m; 
+
 char cmd_queue[MAX_QUEUE_CMD];
 int cmd_head = 0;
 int cmd_tail = 0;
@@ -26,7 +30,6 @@ pthread_mutex_t created_m;
 // Liste di carte attualmente in doing per l'utente
 lavagna_t *doing = NULL;
 // timestamp aquisizione prima carta nella lista doing
-time_t doing_timestamp = 0;  
 
 // socket listener per parte peer to peer
 int listener;
@@ -204,6 +207,7 @@ int main(int argc, char* argv[])
     sprintf(user_prompt, "utente%u", user_port);
     pthread_mutex_init(&created_m, NULL);
     pthread_mutex_init(&cmd_queue_m, NULL);
+    pthread_mutex_init(&worker_occ_m, NULL);
     pthread_t prompt_cycle;
     sprintf(prompt_msg, "utente%u", user_port);
     if(argc != 3 || strcmp(argv[2], "-d"))// se gli argomenti non sono esattamente 2, e il secondo non è -d
@@ -332,10 +336,15 @@ int main(int argc, char* argv[])
                 printf("\n>> Ho proposto il costo minore, quindi mi prendo la card\n%s> "
                         , user_prompt);
                 fflush(stdout);
-                insert_into_lavagna(&doing, contended_card);
-                // Memorizzo il timestamp di arrivo della card
-                // per poterla mandare passato un intervallo di tempo MAX_TIME_DOING secondi
-                doing_timestamp = time(NULL);
+                // TODO inserimento in coda invece che in testa
+                //
+                insert_lavagna_coda(&doing, contended_card);
+                pthread_mutex_lock(&worker_occ_m);
+                if(!worker_occupato)
+                {
+                    pthread_create(&worker, NULL, worker_fun, NULL);
+                }
+                pthread_mutex_unlock(&worker_occ_m);
             }
             free(contended_card);
             send_msg(server_sock, (void*)&network_winner, 2);

@@ -93,4 +93,8 @@ void unprepare_card(task_card_t *card, void* buf, size_t dim);
 // mantenerla consistente
 void libera_lavagna(lavagna_t*);
 
+// Copia il contenuto di src in dest. Non alloca una nuova descrizione, ma assume che la descrizione
+// di src sia già allocata e cambia solo il puntatore
+void copia_card(const task_card_t *, task_card_t *);
+
 #endif

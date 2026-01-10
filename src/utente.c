@@ -34,28 +34,51 @@ int card_done(int server_sock, lavagna_t **doing_list)
     return 1;
 }
 
-// valuta se la card in doing deve essere mandata, in base al timestamp
-// di aquisizione doing_timestamp. Se deve essere mandata la manda, e ritorna 1.
+void* worker_fun(void* no_arg__)
+{
+    // Segnalo che la carta in doing sta essendo processata
+    worker_occupato = true;
+    // Processazione
+    sleep(MAX_TIME_DOING);
+    // Segnalo che la carta in doing è stata
+    worker_occupato = false;
+    pthread_exit(NULL);
+}
+
+
+void insert_lavagna_coda(lavagna_t **l, const task_card_t *card)
+{
+    lavagna_t* new = (lavagna_t*)malloc(sizeof(lavagna_t)); 
+    new->next = NULL;
+    copia_card(card, &(new->card)); 
+    if(!*l)
+    {
+        (*l) = new;
+        return;
+    }
+    lavagna_t *iter = *l;
+    while(iter->next)
+    {
+        iter = iter->next;
+    }
+    iter->next = new;
+}
+
+// valuta se la worker ha finito di eseguire la card
+// Se deve essere mandata la manda, e ritorna 1.
 int send_if_done(int server_sock) 
 {
-    // Se l'utente non sta facendo nessuna attività
-    if(!doing_timestamp) 
+    // Se ci sono card in doing e worker non sta lavorando
+    if(doing && !worker_occupato)
     {
-        return 0;
-    }
-    // Se l'utente ha finito
-    if(time(NULL) - doing_timestamp >= MAX_TIME_DOING)
-    {
+        pthread_join(worker, NULL);
         card_done(server_sock, &doing); 
         // Se c'è un'altra carta da fare aggiorno il timestamp
         if(doing)
         {
-            doing_timestamp = time(NULL);
+            pthread_create(&worker, NULL, worker_fun, NULL);
         }
-        else
-        {
-            doing_timestamp = 0;
-        }
+        TST("card fatta\n");
         return 1;
     }
     return 0;

@@ -4,6 +4,7 @@
 #include "../include/common_net.h"
 #include <pthread.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 
 #define MAX_QUEUE_CMD 10
 
@@ -11,7 +12,7 @@
 
 // Tempo in cui una carta rimane in doing in secondi.
 // Una volta scaduto la card viene mandata come done a lavagna
-#define MAX_TIME_DOING 50
+#define MAX_TIME_DOING 5
   
 // Coda circolare dei comandi da eseguire
 extern char cmd_queue[MAX_QUEUE_CMD];
@@ -26,8 +27,10 @@ extern task_card_t *created;
 // carta attualmente in doing. NULL se non presente
 extern lavagna_t *doing;
 extern pthread_mutex_t created_m;
-// timestamp istante in cui la card attualmente in doing è stata presa in carico
-extern time_t doing_timestamp; 
+// thread che eseguirà la card
+extern pthread_t worker;
+extern bool worker_occupato;
+extern pthread_mutex_t worker_occ_m;
 
 extern char prompt_msg[12];
 extern char user_prompt[13]; // utentexxxxxx\0
@@ -61,8 +64,16 @@ void disconnect(int);
 // ritorna 0 in caso di fallimento, 1 altrimenti
 int card_done(int, lavagna_t **);
 
-// controlla il tempo attuale e lo confronta con timestamp.
-// Se la differenza è maggiore di MAX_TIME_DOING manda card done alla lavagna
-// ritorna 1 se ha mandato la card, 0 altrimenti
-int send_if_done(int); //TODO 
+// esegue la processazione della card (sleep(MAX_TIME_DOING))
+// e comunica il termine del lavoro mediante flag globale
+// worker_occupato
+void* worker_fun(void*);
+
+// Gestisce l'esecuzione del thread worker, ed eventualmente
+// chiama la send_card. Ritorna 1 se ha chiamato la send, 0 altrimenti
+int send_if_done(int); 
+
+// Inerimento in coda alla lavagna. Serve solo per il corretto funzionamento di doing
+void insert_lavagna_coda(lavagna_t **, const task_card_t *);
 #endif
+
