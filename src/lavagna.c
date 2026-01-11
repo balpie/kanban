@@ -161,7 +161,7 @@ void send_lavagna(int sock, lavagna_t *lavagna)
 }
 
 // prepara status e la lista di connessioni a una send 
-// fa il contrario di restore status
+// fa il contrario di restore_status
 // Necessita di lock su status, connessione, e lavagna
 void prepare_send()
 {
@@ -213,8 +213,6 @@ uint8_t chose_instr(time_t aquired, connection_l_e *connessione)
             {
                 prepare_send();
             }
-            // alle connessioni presenti auttualmente metto come
-            // tosend la prima card di todo_list
             pthread_rwlock_unlock(&m_lavagna);
             pthread_mutex_unlock(&lista_connessioni.m);
             pthread_mutex_unlock(&status.m);
@@ -407,7 +405,6 @@ uint16_t handle_p2p_result(connection_l_e *connessione, uint16_t winner)
     // Barriera per fine asta. 
     // Senza si rischia di avere aste inconsistenti in caso
     // di più card disponibili in to-do
-    TST("recv_p2p_result(%u): arrivo alla barrierera\n", connessione->port_id);
     if(status.winner_arrived == status.total)
     {
         // Finchè non è finita l'asta, aspetto sulla condition variable fine asta
@@ -416,8 +413,6 @@ uint16_t handle_p2p_result(connection_l_e *connessione, uint16_t winner)
             ERR("Utente %d ha passato un vincitore inesistente\n", connessione->port_id);
         }
         // A questo punto devo disfare le cose di status
-        // ordine lock: status, connessioni, lavagna
-        DBG("recv_p2p_result(%u): chiamata restore_status\n", connessione->port_id);
         restore_status();
         pthread_cond_broadcast(&status.fa); 
     }
@@ -425,8 +420,6 @@ uint16_t handle_p2p_result(connection_l_e *connessione, uint16_t winner)
     {
         while(status.winner_arrived > 0)
         {
-            TST("recv_p2p_result(%u): dentro la barrierera, arrived: %d, total: %d\n", 
-                    connessione->port_id, status.winner_arrived, status.total);
             pthread_cond_wait(&status.fa, &status.m);
         }
     }   
@@ -471,6 +464,74 @@ int get_doing_card_id(uint16_t port)
         p = p->next;
     }
     return -1;
+}
+
+void esaudisci_richiesta(connection_l_e *connessione, uint8_t instr_from_client[2], time_t *aquired_p)
+{
+    uint8_t instr_to_client[2];
+    switch(instr_from_client[0]) 
+    {
+    case INSTR_NEW_CARD:
+        task_card_t *card = recive_card(connessione->socket, (size_t)instr_from_client[1]);
+        // Nel caso in cui ci sia già una card presente con quell'id
+        if(get_card(card->id))
+        {
+            // Comunico al client l'inserimento non riuscito
+            instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN;
+            send_msg(connessione->socket, instr_to_client, 2);
+            LOG("esaudisci_richiesta: id card ricevuta già presente\n");
+            free(card);
+            break;
+        }
+        // Comunico al client l'inserimento riuscito
+        instr_to_client[0] = instr_to_client[1] = INSTR_ACK;
+        send_msg(connessione->socket, instr_to_client, 2);
+
+        pthread_rwlock_wrlock(&m_lavagna);
+        // salva la descrizione nella lista
+        insert_into_lavagna(&lavagna, card); 
+        pthread_rwlock_unlock(&m_lavagna);
+        free(card); 
+
+        pthread_rwlock_rdlock(&m_lavagna);
+        show_lavagna(lavagna);
+        pthread_rwlock_unlock(&m_lavagna);
+        printf("\nlavagna> ");
+        fflush(stdout);
+        break;
+    case INSTR_SHOW_LAVAGNA:
+        pthread_rwlock_rdlock(&m_lavagna);
+        send_lavagna(connessione->socket, lavagna);
+        pthread_rwlock_unlock(&m_lavagna);
+        break;
+    case INSTR_NOP:
+        break;
+    case INSTR_CARD_DONE:
+        pthread_rwlock_wrlock(&m_lavagna);
+        LOG("se esiste, metto la card dell'utente in done\n");
+        lavagna_t* done_card = extract_from_lavagna(&lavagna, instr_from_client[1]);
+        DBG("sposto carta %d da doing a done: \n", done_card->card.id);
+        if(done_card)
+        {
+            LOG("La card esisteva\n");
+            done_card->card.colonna = DONE_COL;
+            done_card->card.last_modified = time(NULL);
+            insert_lavagna_elem(&lavagna, done_card);
+            if(get_doing_card_id(connessione->port_id) == -1) // se l'utente non ha nessuna card in doing
+            {
+                *aquired_p = 0; // azzero il suo timer per ping-pong
+            }
+            show_lavagna(lavagna); // mostro la lavagna a video
+            printf("\nlavagna> ");
+            fflush(stdout);
+        }
+        else
+        {
+            LOG("esaudisci_richiesta:(%u) ha provato a fare card_done su carta non presente nella lavagna\n",
+                    connessione->port_id);
+        }
+        pthread_rwlock_unlock(&m_lavagna);
+    }
 }
 
 // funzionoe del thread principale per la gestione della comunicazione c-s
@@ -521,13 +582,6 @@ void* serv_client(void* cl_info)
                 sent = 0;
                 continue;
             }
-            else 
-            {
-                LOG("serv_client(%u): caso in cui sono già stati mandati i dati all'utente, "
-                        "ed è stata ricevuta una risposta\n", connessione->port_id);
-                usleep(500000); 
-                continue;
-            }
         }
         if(instr_to_client[0] == INSTR_PING)
         {
@@ -562,68 +616,7 @@ void* serv_client(void* cl_info)
             continue;
         }
         // in base a cosa vuole fare il client lo servo...
-        switch(instr_from_client[0]) 
-        {
-        case INSTR_NEW_CARD:
-            task_card_t *card = recive_card(connessione->socket, (size_t)instr_from_client[1]);
-            // Nel caso in cui ci sia già una card presente con quell'id
-            if(get_card(card->id))
-            {
-                // Comunico al client l'inserimento non riuscito
-                instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN;
-                send_msg(connessione->socket, instr_to_client, 2);
-                LOG("serv_client id card ricevuta già presente\n");
-                free(card);
-                break;
-            }
-            // Comunico al client l'inserimento riuscito
-            instr_to_client[0] = instr_to_client[1] = INSTR_ACK;
-            send_msg(connessione->socket, instr_to_client, 2);
-
-            pthread_rwlock_wrlock(&m_lavagna);
-            // salva la descrizione nella lista
-            insert_into_lavagna(&lavagna, card); 
-            pthread_rwlock_unlock(&m_lavagna);
-            free(card); 
-
-            pthread_rwlock_rdlock(&m_lavagna);
-            show_lavagna(lavagna);
-            pthread_rwlock_unlock(&m_lavagna);
-            printf("\nlavagna> ");
-            fflush(stdout);
-            break;
-        case INSTR_SHOW_LAVAGNA:
-            pthread_rwlock_rdlock(&m_lavagna);
-            send_lavagna(connessione->socket, lavagna);
-            pthread_rwlock_unlock(&m_lavagna);
-            break;
-        case INSTR_NOP:
-            break;
-        case INSTR_CARD_DONE:
-            pthread_rwlock_wrlock(&m_lavagna);
-            LOG("se esiste, metto la card dell'utente in done\n");
-            lavagna_t* done_card = extract_from_lavagna(&lavagna, instr_from_client[1]);
-            DBG("sposto carta %d da doing a done: \n", done_card->card.id);
-            if(done_card)
-            {
-                LOG("La card esisteva\n");
-                done_card->card.colonna = DONE_COL;
-                done_card->card.last_modified = time(NULL);
-                insert_lavagna_elem(&lavagna, done_card);
-                if(get_doing_card_id(connessione->port_id) == -1) // se l'utente non ha nessuna card in doing
-                {
-                    aquired = 0; // azzero il suo timer per ping-pong
-                }
-                show_lavagna(lavagna); // mostro la lavagna a video
-                printf("\nlavagna> ");
-                fflush(stdout);
-            }
-            else
-            {
-                LOG("serv_client(%u) ha provato a fare card_done su carta non presente nella lavagna\n", connessione->port_id);
-            }
-            pthread_rwlock_unlock(&m_lavagna);
-        }
+        esaudisci_richiesta(connessione, instr_from_client, &aquired);
     } 
     return NULL;
 }

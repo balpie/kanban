@@ -336,8 +336,6 @@ int main(int argc, char* argv[])
                 printf("\n>> Ho proposto il costo minore, quindi mi prendo la card\n%s> "
                         , user_prompt);
                 fflush(stdout);
-                // TODO inserimento in coda invece che in testa
-                //
                 insert_lavagna_coda(&doing, contended_card);
                 pthread_mutex_lock(&worker_occ_m);
                 if(!worker_occupato)
