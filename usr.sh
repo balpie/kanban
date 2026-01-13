@@ -17,4 +17,4 @@ port=$(tail -n 1 $USR_FILE)
 echo $(( $port + 1 )) > $USR_FILE
 
 # Creo utente con una porta non utilizzata
-./bin/utente $port 
+./utente $port 

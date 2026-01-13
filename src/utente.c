@@ -6,9 +6,36 @@
 #include <string.h>
 #include <unistd.h>
 
-// Stringa contenente il prompt del client, così composto: 
-// "utentexxxxx" dove le x rappresentano le 4 o 5 cifre della porta identificativa.
-char prompt_msg[12];
+lavagna_t *lavagna = NULL;
+
+pthread_t worker;
+bool worker_occupato = false;
+pthread_mutex_t worker_occ_m; 
+
+char cmd_queue[MAX_QUEUE_CMD];
+int cmd_head = 0;
+int cmd_tail = 0;
+pthread_mutex_t cmd_queue_m;
+char user_prompt[13]; // utentexxxxxx\0
+
+// Puntatore alla carta creata. Il mutex è necessario per coordinare il thread 
+// di creazione della card con quello di comunicazione con la lavagna
+task_card_t *created = NULL;
+pthread_mutex_t created_m; 
+
+// Liste di carte attualmente in doing per l'utente
+lavagna_t *doing = NULL;
+// timestamp aquisizione prima carta nella lista doing
+
+// socket listener per parte peer to peer
+int listener;
+// 3 secondi massimi di attesa in ingresso e in uscita ai socket
+struct timeval timeout_p2p = {
+    .tv_sec = 3,
+    .tv_usec = 0
+};
+
+
 
 // Comunica alla lavagna che una determinata card è stata terminata.
 // Questa carta è quella in testa nella lista doing, quindi le card vengono 
@@ -271,6 +298,7 @@ void disconnect(int server_sock)
     close(listener);
     close(server_sock);
     LOG("arrivato comando QUIT\n");
+    putchar('\n');
     // devo usare questa funzione per terminare tutto il processo, 
     // incluso un eventuale thread fermo su fgets (per esempio in create_card)
     _exit(0); 
@@ -284,7 +312,7 @@ void *prompt_cycle_function(void* self_info)
     char c;
     for(;;)
     {
-        c = prompt_line(prompt_msg);
+        c = prompt_line(user_prompt);
         pthread_mutex_lock(&cmd_queue_m);
         if((cmd_head + 1) % MAX_QUEUE_CMD == cmd_tail)
         {

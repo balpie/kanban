@@ -10,41 +10,11 @@
 #include <time.h>
 #include <fcntl.h>
 
-lavagna_t *lavagna = NULL;
-
-pthread_t worker;
-bool worker_occupato = false;
-pthread_mutex_t worker_occ_m; 
-
-char cmd_queue[MAX_QUEUE_CMD];
-int cmd_head = 0;
-int cmd_tail = 0;
-pthread_mutex_t cmd_queue_m;
-char user_prompt[13]; // utentexxxxxx\0
-
-// Puntatore alla carta creata. Il mutex è necessario per coordinare il thread 
-// di creazione della card con quello di comunicazione con la lavagna
-task_card_t *created = NULL;
-pthread_mutex_t created_m; 
-
-// Liste di carte attualmente in doing per l'utente
-lavagna_t *doing = NULL;
-// timestamp aquisizione prima carta nella lista doing
-
-// socket listener per parte peer to peer
-int listener;
-
 // timeout socket con lavagna
 struct timeval timeout_recv = {
     .tv_sec = 0,
     .tv_usec = 250000
 };      
-// 3 secondi massimi di attesa in ingresso e in uscita ai socket
-struct timeval timeout_p2p = {
-    .tv_sec = 3,
-    .tv_usec = 0
-};
-
 
 void err_args(char* prg)
 {
@@ -209,7 +179,7 @@ int main(int argc, char* argv[])
     pthread_mutex_init(&cmd_queue_m, NULL);
     pthread_mutex_init(&worker_occ_m, NULL);
     pthread_t prompt_cycle;
-    sprintf(prompt_msg, "utente%u", user_port);
+    sprintf(user_prompt, "utente%u", user_port);
     if(argc != 3 || strcmp(argv[2], "-d"))// se gli argomenti non sono esattamente 2, e il secondo non è -d
     {
         // redirigo i messaggi di errore a un file

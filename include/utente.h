@@ -12,7 +12,7 @@
 
 // Tempo in cui una carta rimane in doing in secondi.
 // Una volta scaduto la card viene mandata come done a lavagna
-#define MAX_TIME_DOING 5
+#define MAX_TIME_DOING 50
   
 // Coda circolare dei comandi da eseguire
 extern char cmd_queue[MAX_QUEUE_CMD];
@@ -32,7 +32,6 @@ extern pthread_t worker;
 extern bool worker_occupato;
 extern pthread_mutex_t worker_occ_m;
 
-extern char prompt_msg[12];
 extern char user_prompt[13]; // utentexxxxxx\0
 
 // lavagna corrente. L'utente assuma che non sia mai up to date: 
@@ -50,14 +49,10 @@ task_card_t* create_card();
 
 // connettiti ed effettua la registrazione al server
 int registra_utente(int);
-// SHOW_LAVAGNA:
-// Viene mostrata la lavagna, con le card assegnate ognuna alla giusta colonna
-
 
 // Disconnette l'utente dalla lavagna e termina(da passare socket del server)
 void disconnect(int);
 
-// CARD_DONE
 // L'utente comunica alla lavagna la terminazione dell'attività
 // terminerà l'attività in testa alla lista passata
 // per argomento, e verrà rimossa dalla relativa lista
