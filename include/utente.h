@@ -41,7 +41,8 @@ extern lavagna_t* lavagna;
 extern int listener;
 // Funzione del thread che gestisce il prompt. 
 // Inserisce comandi nella cmd_queue, in modo che 
-// il main thread li possa eseguire, se hanno bisogno di comunicare con la lavagna
+// il main thread li possa eseguire, se hanno bisogno 
+// di comunicare con la lavagna
 void* prompt_cycle_function(void*);
 // CREATE_CARD:
 // Crea carta (con id, colonna, e descrizione prese da tastiera)
@@ -68,7 +69,8 @@ void* worker_fun(void*);
 // chiama la send_card. Ritorna 1 se ha chiamato la send, 0 altrimenti
 int send_if_done(int); 
 
-// Inerimento in coda alla lavagna. Serve solo per il corretto funzionamento di doing
+// Inerimento in coda alla lavagna. Serve solo per il 
+// corretto funzionamento di doing
 void insert_lavagna_coda(lavagna_t **, const task_card_t *);
 #endif
 

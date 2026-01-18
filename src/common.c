@@ -22,8 +22,8 @@ const char CMD_ARR[] = {
     CMD_CARD_DONE
 };
 
-// Stampa rispettando una dimensione delle linee pari a size, mettendo all'inizio
-// e alla fine della linea un delimiter
+// Stampa rispettando una dimensione delle linee pari a size, mettendo 
+// all'inizio e alla fine della linea un delimiter
 void print_in_box(char* str, size_t size, char delimiter)
 {
     if(!str)

@@ -19,13 +19,16 @@ struct timeval timeout_recv = {
 void err_args(char* prg)
 {
         printf(">! utilizzo: %s <porta> [-d]\n", prg);
-        printf(">! il parametro <porta> deve essere un intero rappresentabile su 16 bit maggiore di 5678\n");
-        printf(">! passare argomento -d per redirigere il logging da file a schermo\n");
+        printf(">! il parametro <porta> deve essere un intero "
+                "rappresentabile su 16 bit maggiore di 5678\n");
+        printf(">! passare argomento -d per redirigere il "
+                "logging da file a schermo\n");
         _exit(-1);
 }
 
 // Riceve da lavagna i peer necessari per effettuare l'asta
-void get_peers(peer_list **peers, int server_sock, unsigned char instr_from_server[2], uint16_t user_port)
+void get_peers(peer_list **peers, int server_sock, 
+        unsigned char instr_from_server[2], uint16_t user_port)
 {
     // Inizio get peer
     LOG("main: devono arrivare %u peers\n", instr_from_server[1]);
@@ -40,12 +43,13 @@ void get_peers(peer_list **peers, int server_sock, unsigned char instr_from_serv
         }
         else
         {
-            ERR("get_peers: peer non ricevuto correttamente o connessione chiusa\n");
+            ERR("get_peers: peer non ricevuto "
+                    "correttamente o connessione chiusa\n");
             disconnect(server_sock);
         }
     }
-    // Aggiungo l'utente stesso tra i peer, userò questa cosa in kanban_p2p_iteraction
-    // e send_cost
+    // Aggiungo l'utente stesso tra i peer, 
+    // userò questa cosa in kanban_p2p_iteraction e send_cost
     peer_list *pp = (peer_list*)malloc(sizeof(peer_list));
     pp->port = user_port;
     pp->addr = 0; 
@@ -55,7 +59,8 @@ void get_peers(peer_list **peers, int server_sock, unsigned char instr_from_serv
     // fine get peer
 }
 
-// Se presente, preleva comando dalla coda circolare, lo manda alla lavagna, e gestisce la risposta
+// Se presente, preleva comando dalla coda circolare, 
+// lo manda alla lavagna, e gestisce la risposta
 void send_command(int server_sock)
 {
     unsigned char instr_from_server[2];
@@ -104,13 +109,15 @@ void send_command(int server_sock)
             break;
         case CMD_SHOW_LAVAGNA:
             LOG( "[dbg]: arrivato comando SHOW_LAVAGNA\n");
-            // Prendi instr from server, che indicherà la quantità di card presenti nella lavagna
-            // Se il byte di stato è INSTR_EMPTY il secondo byte non è significativo, e la lavagna è
-            // vuota
+            // Prendi instr from server, che indicherà la 
+            // quantità di card presenti nella lavagna
+            // Se il byte di stato è INSTR_EMPTY il secondo 
+            // byte non è significativo, e la lavagna è vuota
             // Comunico il mio intento al server
             instr_to_server[0] = INSTR_SHOW_LAVAGNA;
             send_msg(server_sock, instr_to_server, 2);
-            LOG("[dbg]: mi faccio dire da lavagna quante card ho da ricevere\n");
+            LOG("[dbg]: mi faccio dire da lavagna "
+                    "quante card ho da ricevere\n");
             msglen = get_msg(server_sock, instr_from_server, 2);
             if(!msglen)
             {
@@ -137,7 +144,8 @@ void send_command(int server_sock)
                     disconnect(server_sock);
                 }
                 // ricevo la card
-                task_card_t *cc = recive_card(server_sock, instr_from_server[1]);
+                task_card_t *cc =
+                    recive_card(server_sock, instr_from_server[1]);
                 // la inserisco nella lavagna vuota
                 insert_into_lavagna(&lavagna, cc);
                 free(cc);
@@ -160,69 +168,8 @@ void send_command(int server_sock)
     }
 }
 
-int main(int argc, char* argv[])
+void ciclo_comunicazione(int server_sock, uint16_t user_port, int listener)
 {
-    srand(time(NULL));
-    memset(cmd_queue, 0, MAX_QUEUE_CMD);
-    short unsigned user_port;
-    if(argc < 2)
-    {
-        err_args(argv[0]);
-    }
-    user_port = atoi(argv[1]);
-    if(!user_port || user_port < 5679)
-    {
-        err_args(argv[0]);
-    } 
-    sprintf(user_prompt, "utente%u", user_port);
-    pthread_mutex_init(&created_m, NULL);
-    pthread_mutex_init(&cmd_queue_m, NULL);
-    pthread_mutex_init(&worker_occ_m, NULL);
-    pthread_t prompt_cycle;
-    sprintf(user_prompt, "utente%u", user_port);
-    if(argc != 3 || strcmp(argv[2], "-d"))// se gli argomenti non sono esattamente 2, e il secondo non è -d
-    {
-        // redirigo i messaggi di errore a un file
-        printf(">> Redirigo stderr a un file\n");
-        // nome log file di dimensione strlen(prefisso) + (massimo numero cifre uint16_t) + '\0'
-        char logfilename[sizeof(COMMON_LOGFILE_NAME) + 6];
-        sprintf(logfilename, "%s%u", COMMON_LOGFILE_NAME, user_port);
-        int logfile = open(logfilename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if(logfile < 0)
-        {
-            printf(">! errore open logfile%s\n", logfilename);
-        }
-        if(dup2(logfile, STDERR_FILENO) < 0) // associo stderr al logfile
-        {
-            printf(">! errore ridirezione stderr\n");
-        }
-        LOG( "sto per chidere fd: %d\n", logfile);
-        if(close(logfile))
-        {
-            printf(">! errore close\n");
-        }
-        fflush(stderr); 
-    }
-    printf("<< Registrazione al server con porta %u...\n", user_port);
-    int server_sock = registra_utente(user_port);
-    LOG( "do al socket timeout 1s in send\n");
-    if (setsockopt (server_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_recv, sizeof(timeout_p2p)) < 0)
-        ERR( "errore setsockopt\n");
-    int self_info[2] = {user_port, server_sock};
-
-    struct sockaddr_in listener_addr;
-    int listener = init_listener(&listener_addr, user_port); // listener socket per interazione p2p
-    if (setsockopt (listener, SOL_SOCKET, SO_RCVTIMEO, &timeout_p2p, sizeof(timeout_p2p)) < 0)
-    {
-        ERR( "errore setsockopt\n");
-        printf("!< Errore: in caso di errori nell'asta e' "
-                "possibile che si blocchi completamente l'applicazione\n");
-    }
-
-    pthread_create(&prompt_cycle, NULL, prompt_cycle_function, self_info);
-    pthread_detach(prompt_cycle);
-
-    // variabile per logging
     unsigned char old_instr_from_server = 0;
 
     // Ciclo di comunicazione con server
@@ -270,7 +217,8 @@ int main(int argc, char* argv[])
                 disconnect(server_sock);
             }
             LOG("main, card arriva di dimensione %u\n", instr_from_server[1]);
-            task_card_t *contended_card = recive_card(server_sock, (uint8_t)instr_from_server[1]);
+            task_card_t *contended_card = 
+                recive_card(server_sock, (uint8_t)instr_from_server[1]);
 
             DBG("main, id card ricevuta: %u\n", contended_card->id);
 
@@ -303,8 +251,8 @@ int main(int argc, char* argv[])
             LOG("user_port %u\twinner %u\n", user_port ,winner);
             if(winner == user_port) 
             {
-                printf("\n>> Ho proposto il costo minore, quindi mi prendo la card\n%s> "
-                        , user_prompt);
+                printf("\n>> Ho proposto il costo minore, "
+                        "quindi mi prendo la card\n%s> " , user_prompt);
                 fflush(stdout);
                 insert_lavagna_coda(&doing, contended_card);
                 pthread_mutex_lock(&worker_occ_m);
@@ -329,6 +277,77 @@ int main(int argc, char* argv[])
             continue;
         }
     }
+}
+
+int main(int argc, char* argv[])
+{
+    srand(time(NULL));
+    memset(cmd_queue, 0, MAX_QUEUE_CMD);
+    short unsigned user_port;
+    if(argc < 2)
+    {
+        err_args(argv[0]);
+    }
+    user_port = atoi(argv[1]);
+    if(!user_port || user_port < 5679)
+    {
+        err_args(argv[0]);
+    } 
+    sprintf(user_prompt, "utente%u", user_port);
+    pthread_mutex_init(&created_m, NULL);
+    pthread_mutex_init(&cmd_queue_m, NULL);
+    pthread_mutex_init(&worker_occ_m, NULL);
+    pthread_t prompt_cycle;
+    sprintf(user_prompt, "utente%u", user_port);
+    // se gli argomenti non sono esattamente 2, e il secondo non è -d
+    if(argc != 3 || strcmp(argv[2], "-d"))
+    {
+        // redirigo i messaggi di errore a un file
+        printf(">> Redirigo stderr a un file\n");
+        // nome log file di dimensione strlen(prefisso) + (massimo numero cifre uint16_t) + '\0'
+        char logfilename[sizeof(COMMON_LOGFILE_NAME) + 6];
+        sprintf(logfilename, "%s%u", COMMON_LOGFILE_NAME, user_port);
+        int logfile = open(logfilename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if(logfile < 0)
+        {
+            printf(">! errore open logfile%s\n", logfilename);
+        }
+        // associo stderr al logfile
+        if(dup2(logfile, STDERR_FILENO) < 0) 
+        {
+            printf(">! errore ridirezione stderr\n");
+        }
+        LOG( "sto per chidere fd: %d\n", logfile);
+        if(close(logfile))
+        {
+            printf(">! errore close\n");
+        }
+        fflush(stderr); 
+    }
+    printf("<< Registrazione al server con porta %u...\n", user_port);
+    int server_sock = registra_utente(user_port);
+    LOG( "do al socket timeout 1s in send\n");
+    if (setsockopt (server_sock, SOL_SOCKET, SO_RCVTIMEO, 
+                &timeout_recv, sizeof(timeout_p2p)) < 0)
+        ERR( "errore setsockopt\n");
+    int self_info[2] = {user_port, server_sock};
+
+    struct sockaddr_in listener_addr;
+    // listener socket per interazione p2p
+    int listener = init_listener(&listener_addr, user_port); 
+    if (setsockopt (listener, SOL_SOCKET, SO_RCVTIMEO, 
+                &timeout_p2p, sizeof(timeout_p2p)) < 0)
+    {
+        ERR( "errore setsockopt\n");
+        printf("!< Errore: in caso di errori nell'asta e' "
+                "possibile che si blocchi completamente l'applicazione\n");
+    }
+
+    pthread_create(&prompt_cycle, NULL, prompt_cycle_function, self_info);
+    pthread_detach(prompt_cycle);
+
+    // variabile per logging
+    ciclo_comunicazione(server_sock, user_port, listener);
     close(listener);
     return 0;
 }
