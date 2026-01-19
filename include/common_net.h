@@ -46,7 +46,7 @@
 // In questo caso il secondo byte dell'header indicherà l'id della card fatta
 #define INSTR_CARD_DONE 10
 
-#define LAVAGNA_PORT 5679
+#define LAVAGNA_PORT 5678
 #define LAVAGNA_ADDR "127.0.0.1"
 
 #include <sys/socket.h>
