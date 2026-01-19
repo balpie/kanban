@@ -6,7 +6,8 @@
 #include <string.h>
 
 // inserimento in testa
-connection_l_e* insert_connection(connection_l_e **headptr, int socket, uint16_t port_id, uint32_t addr)
+connection_l_e* insert_connection(connection_l_e **headptr, 
+        int socket, uint16_t port_id, uint32_t addr)
 {
     connection_l_e *nuovo = (connection_l_e*)malloc(sizeof(connection_l_e));
     nuovo->socket = socket;
@@ -90,7 +91,8 @@ void send_conn_list(int sock, connection_l_e* escluso, uint8_t quanti)
     {
         return;
     }
-    ERR("send_connection_list: disconnessione improvvisa, mancano %u da mandare", quanti);
+    ERR("send_connection_list: disconnessione improvvisa, "
+            "mancano %u da mandare", quanti);
     // caso disconnessione inaspettata
     // starà ai client comunicare l'esito fallito dell'operazione.
     // Comunque mando delle connessioni fantoccio per avere simmetria tra i byte mandati 

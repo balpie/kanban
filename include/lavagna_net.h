@@ -30,8 +30,9 @@ int remove_connection(connection_l_e **, int);
 // Manda via socket la connessione passata
 void send_connection(int, connection_l_e*);
 
-// manda via socket tutti i socket con tosend != NULL escludendo "escluso" se presente.
-// se il numero non è corretto manda dei socket "falsi", che hanno 5678 come indirizzo e porta
+// manda via socket tutti i socket con tosend != NULL escludendo "escluso" 
+// se presente. se il numero non è corretto manda dei socket "falsi", che 
+// hanno 5678 come indirizzo e porta
 void send_conn_list(int, connection_l_e*, uint8_t);
 
 #endif

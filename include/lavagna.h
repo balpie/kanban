@@ -74,4 +74,7 @@ void send_lavagna(int, lavagna_t*);
 // inizializza la lavagna con le card presenti nel file INITIAL_CARDS
 int init_lavagna();
 
+// Restituisce 1 se l'utente esiste, 0 altrimenti
+int trova_utente(connection_l_e *, uint16_t );
+
 #endif

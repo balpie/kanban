@@ -11,9 +11,10 @@
 #include <fcntl.h>
 
 // timeout socket con lavagna
+#define TIMEOUT_SOCK_LAVAGNA_US 250000
 struct timeval timeout_recv = {
     .tv_sec = 0,
-    .tv_usec = 250000
+    .tv_usec = TIMEOUT_SOCK_LAVAGNA_US
 };      
 
 void err_args(char* prg)
@@ -172,7 +173,8 @@ void ciclo_comunicazione(int server_sock, uint16_t user_port, int listener)
 {
     unsigned char old_instr_from_server = 0;
 
-    // Ciclo di comunicazione con server
+    DBG("ciclo_comunicazione, listener: %d\n", listener);
+
     for(;;) 
     {
         peer_list *peers = NULL;
@@ -211,7 +213,7 @@ void ciclo_comunicazione(int server_sock, uint16_t user_port, int listener)
 
             // richiedo la dimensione della card
             msglen = get_msg(server_sock, instr_from_server, 2);
-            if(msglen < 0) LOG("Il messaggio non è arrivato!!!\n");
+            if(msglen < 0) ERR("Il messaggio non è arrivato!!!\n");
             if(!msglen)
             {
                 disconnect(server_sock);
@@ -220,8 +222,6 @@ void ciclo_comunicazione(int server_sock, uint16_t user_port, int listener)
             task_card_t *contended_card = 
                 recive_card(server_sock, (uint8_t)instr_from_server[1]);
 
-            DBG("main, id card ricevuta: %u\n", contended_card->id);
-
             // Mando ack per dire al server che ho ricevuto card e peers
             instr_to_server[0] = instr_to_server[1] = INSTR_ACK_PEERS; 
             LOG("mando ack al server\n");
@@ -229,14 +229,24 @@ void ciclo_comunicazione(int server_sock, uint16_t user_port, int listener)
 
             // Aspetto che tutti i client siano pronti
             LOG( "Aspetto che tutti i client siano pronti\n");
-            msglen = get_msg(server_sock, instr_from_server, 2);
-            if(msglen < 0) LOG("Il messaggio non è arrivato!!!\n");
+            int time_waited = 0;
+            do
+            {
+                msglen = get_msg(server_sock, instr_from_server, 2);
+                time_waited++;
+                // Dopo un 4 tentativi andati male assumo che qualcosa sia 
+                // andato storto, e passo oltre
+                if(time_waited > 4)
+                {
+                    ERR("Problema asta: 4 tentativi falliti di get_ack. "
+                            "Abortisco asta\n");
+                    continue;
+                }
+            }while(msglen < 0);
             if(!msglen)
             {
                 disconnect(server_sock);
             }
-
-            // p2p()...
 
             print_peers(peers);
             uint16_t winner = NO_USR;
@@ -304,7 +314,8 @@ int main(int argc, char* argv[])
     {
         // redirigo i messaggi di errore a un file
         printf(">> Redirigo stderr a un file\n");
-        // nome log file di dimensione strlen(prefisso) + (massimo numero cifre uint16_t) + '\0'
+        // nome log file di dimensione 
+        // strlen(prefisso) + (massimo numero cifre uint16_t) + '\0'
         char logfilename[sizeof(COMMON_LOGFILE_NAME) + 6];
         sprintf(logfilename, "%s%u", COMMON_LOGFILE_NAME, user_port);
         int logfile = open(logfilename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -326,8 +337,8 @@ int main(int argc, char* argv[])
     }
     printf("<< Registrazione al server con porta %u...\n", user_port);
     int server_sock = registra_utente(user_port);
-    LOG( "do al socket timeout 1s in send\n");
-    if (setsockopt (server_sock, SOL_SOCKET, SO_RCVTIMEO, 
+    LOG("do al socket timeout 1s in send\n");
+    if(setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, 
                 &timeout_recv, sizeof(timeout_p2p)) < 0)
         ERR( "errore setsockopt\n");
     int self_info[2] = {user_port, server_sock};
@@ -335,10 +346,11 @@ int main(int argc, char* argv[])
     struct sockaddr_in listener_addr;
     // listener socket per interazione p2p
     int listener = init_listener(&listener_addr, user_port); 
-    if (setsockopt (listener, SOL_SOCKET, SO_RCVTIMEO, 
+    DBG("main(%u), inizializzo listener %d", user_port, listener);
+    if(setsockopt (listener, SOL_SOCKET, SO_RCVTIMEO, 
                 &timeout_p2p, sizeof(timeout_p2p)) < 0)
     {
-        ERR( "errore setsockopt\n");
+        ERR("errore setsockopt\n");
         printf("!< Errore: in caso di errori nell'asta e' "
                 "possibile che si blocchi completamente l'applicazione\n");
     }

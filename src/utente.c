@@ -105,14 +105,13 @@ int send_if_done(int server_sock)
         {
             pthread_create(&worker, NULL, worker_fun, NULL);
         }
-        TST("card fatta\n");
         return 1;
     }
     return 0;
 }
 
-// funzione di utilità: da chiamare in caso di output troppo lungo quando chiamata fgets
-// toglie i caratteri in eccesso, fino ad arrivare al \n
+// funzione di utilità: da chiamare in caso di output troppo lungo quando 
+// chiamata fgets toglie i caratteri in eccesso, fino ad arrivare al \n
 void clear_stdin_buffer()
 {
     char c;
@@ -129,14 +128,16 @@ int registra_utente(int port)
     inet_pton(AF_INET, LAVAGNA_ADDR, &indirizzo_server.sin_addr.s_addr);
     indirizzo_server.sin_port = htons(LAVAGNA_PORT);
     indirizzo_server.sin_family = AF_INET;
-    if(connect(sd, (struct sockaddr*)&indirizzo_server, sizeof(indirizzo_server)))
+    if(connect(sd, (struct sockaddr*)&indirizzo_server, 
+                sizeof(indirizzo_server)))
     {
         perror(">! errore connect ");
         close(listener);
         exit(-1);
     }
     int nport = htons(port);
-    if(send_msg(sd, &nport, 2)) // mando al server la mia porta per registrarmi
+    // mando al server la mia porta per registrarmi
+    if(send_msg(sd, &nport, 2)) 
     {
         char instr_from_server[2];
         int msglen = get_msg(sd, instr_from_server, 2);
@@ -146,7 +147,8 @@ int registra_utente(int port)
         }
         if(instr_from_server[1] == INSTR_TAKEN)
         {
-            printf(">! registrazione fallita: porta già utilizzata da un altro client\n");
+            printf(">! registrazione fallita:"
+                    " porta già utilizzata da un altro client\n");
             close(sd);
             close(listener);
             exit(-1);
@@ -179,7 +181,8 @@ char* get_desc(char* buf)
         {
             printf(">! la descrizone non può essere vuota\n");
         }
-        printf("<< inserire la descrizione dell'attività, da terminare con a-capo. Massimo %d caratteri:\n", 
+        printf("<< inserire la descrizione dell'attività, da terminare con "
+                "a-capo. Massimo %d caratteri:\n", 
                 MAX_DIM_DESC);
         if(!fgets(buf, MAX_DIM_DESC, stdin))
         {
@@ -318,7 +321,8 @@ void *prompt_cycle_function(void* self_info)
         {
             // caso coda piena
             pthread_mutex_unlock(&cmd_queue_m);
-            printf(">! coda comandi piena, i prossimi comandi verranno ignorati\n");
+            printf(">! coda comandi piena, i "
+                    "prossimi comandi verranno ignorati\n");
             continue;
         }
         pthread_mutex_unlock(&cmd_queue_m);
@@ -334,11 +338,13 @@ void *prompt_cycle_function(void* self_info)
                 // di lavagna, non di utente)
             case CMD_INVALID:
             case CMD_STAMPA_UTENTI_CONNESSI:
-                printf(">! comando inesistente, o prefisso comune a più comandi\n");
+                printf(">! comando inesistente, "
+                        "o prefisso comune a più comandi\n");
                 continue;
             case CMD_CREATE_CARD:
                 // Se c'è già una carta creata, e sta essendo processata, 
-                // non deve essere possibile che l'utente provi a crearne un'altra
+                // non deve essere possibile che l'utente provi a crearne 
+                // un'altra
                 if(!pthread_mutex_trylock(&created_m))
                 {
                     // In caso contrario questa viene creata
@@ -354,7 +360,9 @@ void *prompt_cycle_function(void* self_info)
                 }
                 break;
             case CMD_SHOW_LAVAGNA:
-                LOG("prompt: Arrivato comando show lavagna\n\tcmd_head: %d\n\tcmd_tail: %d\n",
+                LOG("prompt: Arrivato comando show lavagna"
+                        "\n\tcmd_head: %d"
+                        "\n\tcmd_tail: %d\n",
                         cmd_head, cmd_tail);
                 break;
         }   

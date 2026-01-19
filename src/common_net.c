@@ -78,7 +78,7 @@ int init_listener(struct sockaddr_in* server_addr, uint16_t port)
     LOG("init_listener: inizializzo listener con porta: %d\n", port);
     if(bind(listener, (struct sockaddr*)server_addr, sizeof(*server_addr)) < 0)
     {
-        ERR("init_listener errore bind");
+        ERR("init_listener errore bind: ");
         perror(NULL);
         exit(-1);
     }
@@ -91,7 +91,9 @@ int init_listener(struct sockaddr_in* server_addr, uint16_t port)
     return listener;
 }
 
-// riceve messaggio dal socket (argomento 1) un messaggio di dimensione (argomento 2)
+// riceve messaggio dal socket (argomento 1) 
+// un messaggio di dimensione (argomento 3)
+// e lo scrive nel buffer (argomento 2)
 int get_msg(int sock, void *buf, size_t size)
 {
     ssize_t recived = 0;
@@ -107,7 +109,8 @@ int get_msg(int sock, void *buf, size_t size)
         {
             if(errno == EWOULDBLOCK)
             {
-                // se l'errore è questo la controparte ha tardato a mandare il messaggio
+                // se l'errore è questo la controparte 
+                // ha tardato a mandare il messaggio
                 return -1;
             }
             return 0;
@@ -150,9 +153,10 @@ task_card_t* recive_card(int socket, size_t dim_desc_card)
     // preparo il buffer per la card in versione network
     char net_card[dim_desc_card + sizeof(task_card_t) - sizeof(char*)]; 
     // ricezione nuova card
-    get_msg(socket, net_card, dim_desc_card + sizeof(task_card_t) - sizeof(char*));
-    // alloca la descrizione della card, de-serializza gli argomenti, e quando necessario
-    // li mette in host order
+    get_msg(socket, net_card, 
+            dim_desc_card + sizeof(task_card_t) - sizeof(char*));
+    // alloca la descrizione della card, de-serializza gli argomenti, 
+    // e quando necessario li mette in host order
     unprepare_card(card, net_card, dim_desc_card); 
     return card;
 }

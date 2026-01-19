@@ -11,6 +11,9 @@
 #define DONE_COL 2
 
 // COMANDI
+// I comandi sono rappresentazioni interne di ciò che deve essere fatto, a 
+// differenza delle istruzioni (INSTR_) che indicano un'operazione che richiede
+// la collaborazione della controparte per essere portata a termine
 #define CMD_STR_CREATE_CARD "CREATE_CARD"
 #define CMD_STR_QUIT "QUIT"
 #define CMD_STR_STAMPA_UTENTI_CONNESSI "SEE_CONNECTED"
@@ -38,14 +41,18 @@
 
 // error logs
 
-// I logfile sono pensati per essere visti da terminale con cat
+// I logfile sono pensati per essere visti da terminale con cat, in modo che
+// DBG, ERR, e TST siano colorati. Altrimenti si vedranno dei caratteri strani
 #define LOG(...) fprintf(stderr, "[log] " __VA_ARGS__)
 // Log di errore di colore rosso su terminale
-#define ERR(fmt, ...) fprintf(stderr, "\033[31;10;10m[err] "fmt"\033[0m", ##__VA_ARGS__)
+#define ERR(fmt, ...)\
+    fprintf(stderr, "\033[31;10;10m[err] "fmt"\033[0m", ##__VA_ARGS__)
 // stampe debug di colore blu su terminale
-#define DBG(fmt, ...) fprintf(stderr, "\033[34;10;10m[dbg] "fmt"\033[0m", ##__VA_ARGS__)
+#define DBG(fmt, ...)\
+    fprintf(stderr, "\033[34;10;10m[dbg] "fmt"\033[0m", ##__VA_ARGS__)
 // Stampe test di colore verde su terminale
-#define TST(fmt, ...) fprintf(stderr, "\033[32;10;10m[log] "fmt"\033[0m", ##__VA_ARGS__)
+#define TST(fmt, ...)\
+    fprintf(stderr, "\033[32;10;10m[log] "fmt"\033[0m", ##__VA_ARGS__)
 // Utility
 #define VALID_PORT(pp) ((pp > 5678) ? (1) : (0))
 
@@ -93,8 +100,8 @@ void unprepare_card(task_card_t *card, void* buf, size_t dim);
 // mantenerla consistente
 void libera_lavagna(lavagna_t*);
 
-// Copia il contenuto di src in dest. Non alloca una nuova descrizione, ma assume che la descrizione
-// di src sia già allocata e cambia solo il puntatore
+// Copia il contenuto di src in dest. Non alloca una nuova descrizione, ma 
+// assume che la descrizione di src sia già allocata e cambia solo il puntatore
 void copia_card(const task_card_t *, task_card_t *);
 
 #endif

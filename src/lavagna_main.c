@@ -82,14 +82,17 @@ int main(int argc, char *argv[])
         unsigned int len_new = sizeof(new_connection);
         if(status.n_connessioni < MAX_SERVER_PROCS)
         {
-            new_sock = accept(sock_listener, (struct sockaddr*)&new_connection, &len_new);
+            new_sock = accept(sock_listener, 
+                    (struct sockaddr*)&new_connection, &len_new);
             LOG("do al socket timeout 1s in send\n");
-            if (setsockopt (new_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_recv, sizeof(timeout_recv)) < 0)
+            if (setsockopt (new_sock, SOL_SOCKET, SO_RCVTIMEO, 
+                        &timeout_recv, sizeof(timeout_recv)) < 0)
                 ERR("errore setsockopt\n");
-            // alloco nello heap altrimenti in caso di connessioni molto vicine tra loro
-            // se fosse nello stack del main rischierei che si sovrascrivessero dandomi
-            // strutture dati inconsistenti
-            struct client_info *ci = (struct client_info*)malloc(sizeof(struct client_info));
+            // alloco nello heap altrimenti in caso di connessioni molto 
+            // vicine tra loro se fosse nello stack del main rischierei che 
+            // si sovrascrivessero dandomi strutture dati inconsistenti
+            struct client_info *ci = 
+                (struct client_info*)malloc(sizeof(struct client_info));
             ci->addr = new_connection.sin_addr.s_addr;
             ci->socket = new_sock;
             pthread_create(&server_processes, NULL, serv_client, ci);
@@ -97,7 +100,8 @@ int main(int argc, char *argv[])
         }
         else 
         { 
-            // aspetto che qualcuno si disconnetta prima di accettare una nuova conessione
+            // aspetto che qualcuno si disconnetta prima di accettare una 
+            // nuova conessione
             sleep(1);
         }
     }

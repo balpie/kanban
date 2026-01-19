@@ -34,11 +34,10 @@ extern pthread_mutex_t worker_occ_m;
 
 extern char user_prompt[13]; // utentexxxxxx\0
 
-// lavagna corrente. L'utente assuma che non sia mai up to date: 
-// ogni volta che la vuole vedere chiede alla lavagna le card attuali e le aggiorna
+// lavagna corrente. L'utente assuma che non sia mai up to date: ogni volta 
+// che la vuole vedere chiede alla lavagna le card attuali e le aggiorna
 extern lavagna_t* lavagna;
 
-extern int listener;
 // Funzione del thread che gestisce il prompt. 
 // Inserisce comandi nella cmd_queue, in modo che 
 // il main thread li possa eseguire, se hanno bisogno 
