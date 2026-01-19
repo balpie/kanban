@@ -59,7 +59,6 @@ void send_connection(int sock, connection_l_e* conn)
 {
     uint16_t port = htons(conn->port_id); 
     uint32_t addr = htonl(conn->addr);
-    LOG("send_connection, port: %u\taddr: 0x%X\n", ntohs(port), ntohl(addr));
     unsigned msglen = send_msg(sock, &port, 2);
     if(!msglen)
     {

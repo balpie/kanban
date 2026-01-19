@@ -53,7 +53,6 @@ int card_done(int server_sock, lavagna_t **doing_list)
     // estrazione in testa
     lavagna_t *cc = extract_from_lavagna(doing_list, 
             (*doing_list)->card.id); 
-    DBG("card_done: estratto card %u\n", cc->card.id);
     // libero la card
     free(cc->card.desc); 
     free(cc);

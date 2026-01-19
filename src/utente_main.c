@@ -32,14 +32,12 @@ void get_peers(peer_list **peers, int server_sock,
         unsigned char instr_from_server[2], uint16_t user_port)
 {
     // Inizio get peer
-    LOG("main: devono arrivare %u peers\n", instr_from_server[1]);
+    LOG("get_peers: devono arrivare %u peers\n", instr_from_server[1]);
     for(uint8_t i = 0; i < instr_from_server[1]; i++)
     {
         peer_list *pp = recive_peer(server_sock);
         if(pp)
         {
-            LOG("chiamo insert_peer su \n\taddr: %u\n\tport: %u\n", 
-                    pp->addr, pp->port);
             insert_peer(peers, pp);
         }
         else
@@ -109,7 +107,6 @@ void send_command(int server_sock)
             fflush(stdout);
             break;
         case CMD_SHOW_LAVAGNA:
-            LOG( "[dbg]: arrivato comando SHOW_LAVAGNA\n");
             // Prendi instr from server, che indicherà la 
             // quantità di card presenti nella lavagna
             // Se il byte di stato è INSTR_EMPTY il secondo 
@@ -117,8 +114,6 @@ void send_command(int server_sock)
             // Comunico il mio intento al server
             instr_to_server[0] = INSTR_SHOW_LAVAGNA;
             send_msg(server_sock, instr_to_server, 2);
-            LOG("[dbg]: mi faccio dire da lavagna "
-                    "quante card ho da ricevere\n");
             msglen = get_msg(server_sock, instr_from_server, 2);
             if(!msglen)
             {
@@ -136,10 +131,12 @@ void send_command(int server_sock)
             uint8_t count = instr_from_server[1];
             for(uint8_t i = 0; i < count; i++)
             {
-                LOG( "main, valuto card %d-esima\n", i+1);
                 // ricevo dimensione descrizione card
                 msglen = get_msg(server_sock, instr_from_server, 2);
-                if(msglen < 0) LOG("Il messaggio non è arrivato!!!\n");
+                if(msglen < 0) 
+                {
+                    ERR("Il messaggio non è arrivato!!!\n");
+                }
                 if(!msglen)
                 {
                     disconnect(server_sock);
@@ -173,8 +170,6 @@ void ciclo_comunicazione(int server_sock, uint16_t user_port, int listener)
 {
     unsigned char old_instr_from_server = 0;
 
-    DBG("ciclo_comunicazione, listener: %d\n", listener);
-
     for(;;) 
     {
         peer_list *peers = NULL;
@@ -199,10 +194,10 @@ void ciclo_comunicazione(int server_sock, uint16_t user_port, int listener)
             continue;
         }
 
-        LOG("main: msglen %d\n", msglen); 
         if(instr_from_server[0] != old_instr_from_server)
         {
-            LOG("main: Ricevuto da server %u\n", instr_from_server[0]);
+            LOG("ciclo_comunicazione: Ricevuto da server %u\n", 
+                    instr_from_server[0]);
             old_instr_from_server = instr_from_server[0];
         }
 
@@ -213,22 +208,26 @@ void ciclo_comunicazione(int server_sock, uint16_t user_port, int listener)
 
             // richiedo la dimensione della card
             msglen = get_msg(server_sock, instr_from_server, 2);
-            if(msglen < 0) ERR("Il messaggio non è arrivato!!!\n");
+            if(msglen < 0) 
+            {
+                ERR("Il messaggio non è arrivato!!!\n");
+            }
             if(!msglen)
             {
                 disconnect(server_sock);
             }
-            LOG("main, card arriva di dimensione %u\n", instr_from_server[1]);
             task_card_t *contended_card = 
                 recive_card(server_sock, (uint8_t)instr_from_server[1]);
+            LOG("ciclo_comunicazione: "
+                    "arrivata card n. %u\n", contended_card->id);
 
             // Mando ack per dire al server che ho ricevuto card e peers
             instr_to_server[0] = instr_to_server[1] = INSTR_ACK_PEERS; 
-            LOG("mando ack al server\n");
+            LOG("ciclo_comunicazione: mando ack al server\n");
             send_msg(server_sock, instr_to_server, 2);
 
             // Aspetto che tutti i client siano pronti
-            LOG( "Aspetto che tutti i client siano pronti\n");
+            LOG("Aspetto che tutti i client siano pronti\n");
             int time_waited = 0;
             do
             {
@@ -258,7 +257,6 @@ void ciclo_comunicazione(int server_sock, uint16_t user_port, int listener)
             LOG("mando porta vincitore, tale: %u\n", winner);
             uint16_t network_winner = htons(winner);
 
-            LOG("user_port %u\twinner %u\n", user_port ,winner);
             if(winner == user_port) 
             {
                 printf("\n>> Ho proposto il costo minore, "
@@ -328,7 +326,7 @@ int main(int argc, char* argv[])
         {
             printf(">! errore ridirezione stderr\n");
         }
-        LOG( "sto per chidere fd: %d\n", logfile);
+        LOG("chiudo fd: %d\n", logfile);
         if(close(logfile))
         {
             printf(">! errore close\n");
@@ -337,7 +335,6 @@ int main(int argc, char* argv[])
     }
     printf("<< Registrazione al server con porta %u...\n", user_port);
     int server_sock = registra_utente(user_port);
-    LOG("do al socket timeout 1s in send\n");
     if(setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, 
                 &timeout_recv, sizeof(timeout_p2p)) < 0)
         ERR( "errore setsockopt\n");
@@ -346,7 +343,6 @@ int main(int argc, char* argv[])
     struct sockaddr_in listener_addr;
     // listener socket per interazione p2p
     int listener = init_listener(&listener_addr, user_port); 
-    DBG("main(%u), inizializzo listener %d", user_port, listener);
     if(setsockopt (listener, SOL_SOCKET, SO_RCVTIMEO, 
                 &timeout_p2p, sizeof(timeout_p2p)) < 0)
     {

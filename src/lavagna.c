@@ -105,6 +105,8 @@ connection_l_e* registra_client(int socket, uint32_t addr)
         instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN; 
         send_msg(socket, instr_to_client, 2);
         close(socket);
+        LOG("registra_client: Tentativo di connessione fallito: "
+                "connessione già presente");
         return NULL;
     }
     if(status.status == INSTR_AVAL_CARD)
@@ -114,6 +116,8 @@ connection_l_e* registra_client(int socket, uint32_t addr)
         instr_to_client[0] = instr_to_client[1] = INSTR_WAIT; 
         send_msg(socket, instr_to_client, 2);
         close(socket);
+        LOG("registra_client: Tentativo di connessione fallito: "
+                "asta in corso");
         return NULL;
     }
     // Comunico al client che l'iscrizione è andata a buon fine
@@ -123,7 +127,8 @@ connection_l_e* registra_client(int socket, uint32_t addr)
             socket, ntohs(port), ntohl(addr)); 
     pthread_mutex_unlock(&lista_connessioni.m);
     status.n_connessioni++;
-    LOG("listener: numero connessioni %d\n", status.n_connessioni + 1);
+    LOG("registra_client: nuovo client registrato con successo. "
+            "utenti connessi: %d\n", status.n_connessioni);
     pthread_mutex_unlock(&status.m);
     return conn; 
 }
@@ -131,8 +136,6 @@ connection_l_e* registra_client(int socket, uint32_t addr)
 // Manda via sock tutte le card della lavagna 
 void send_lavagna(int sock, lavagna_t *lavagna)
 {
-    LOG("send_lavagna\n");
-    // conto numero di card
     lavagna_t *p = lavagna;
     uint8_t count = 0;
     while(p)
@@ -149,7 +152,6 @@ void send_lavagna(int sock, lavagna_t *lavagna)
     }
     instr_to_client[0] = INSTR_SHOW_LAVAGNA;
     instr_to_client[1] = count;
-    LOG("send_lavagna, \n\tcount: %d\n", instr_to_client[1]);
     // comunico al client la quantità di card da ricevere
     send_msg(sock, instr_to_client, 2); 
     p = lavagna;
@@ -367,25 +369,12 @@ void send_p2p_info(connection_l_e *connessione)
     pthread_mutex_unlock(&status.m);
 }
 
-int trova_utente(connection_l_e *head, uint16_t usr)
-{
-    while(head)
-    {
-        if(head->port_id == usr)
-        {
-            return 1;
-        }
-        head = head->next;
-    }
-    return 0;
-}
-
 // Assegna card dell'asta alla connessione con id winner
 int assign_card(uint16_t winner)
 {
     // Se winner non esiste o la sua porta non è valida 
     // non viene assegnata la card
-    if(!VALID_PORT(winner) || !trova_utente(lista_connessioni.head, winner))
+    if(!VALID_PORT(winner) || !get_connection(winner))
     {
         return 0;
     }
@@ -505,12 +494,14 @@ void esaudisci_richiesta(connection_l_e *connessione,
         task_card_t *card = 
             recive_card(connessione->socket, (size_t)instr_from_client[1]);
         // Nel caso in cui ci sia già una card presente con quell'id
-        if(get_card(card->id))
+        // oppure nel caso in cui la card fosse in colonna doing
+        if(get_card(card->id) || card->colonna == DOING_COL)
         {
             // Comunico al client l'inserimento non riuscito
             instr_to_client[0] = instr_to_client[1] = INSTR_TAKEN;
             send_msg(connessione->socket, instr_to_client, 2);
-            LOG("esaudisci_richiesta: id card ricevuta già presente\n");
+            LOG("esaudisci_richiesta: id card ricevuta già presente"
+                    "oppur card direttamente in colonna todo senza asta\n");
             free(card);
             break;
         }
@@ -523,7 +514,6 @@ void esaudisci_richiesta(connection_l_e *connessione,
         insert_into_lavagna(&lavagna, card); 
         pthread_rwlock_unlock(&m_lavagna);
         free(card); 
-
         pthread_rwlock_rdlock(&m_lavagna);
         show_lavagna(lavagna);
         pthread_rwlock_unlock(&m_lavagna);
@@ -539,12 +529,11 @@ void esaudisci_richiesta(connection_l_e *connessione,
         break;
     case INSTR_CARD_DONE:
         pthread_rwlock_wrlock(&m_lavagna);
-        LOG("se esiste, metto la card dell'utente in done\n");
+        //se esiste, metto la card dell'utente in done\n
         lavagna_t* done_card =
             extract_from_lavagna(&lavagna, instr_from_client[1]);
         if(done_card)
         {
-            LOG("La card esisteva\n");
             done_card->card.colonna = DONE_COL;
             done_card->card.last_modified = time(NULL);
             insert_lavagna_elem(&lavagna, done_card);
@@ -599,27 +588,23 @@ void* serv_client(void* cl_info)
             {
                 sent = 1;
                 // mando al client le informazioni che gli servono per l'asta
-                LOG("serv_client(%u) parte funzione send_p2p_info\n", 
-                        connessione->port_id);
                 send_p2p_info(connessione);
                 // A questo punto aspetto da ogni client la risposta, che 
                 // dovrebbe essere il numero di porta del client che si 
-                // "aggiudica" la task se sono l'ultimo, inserisco la card del 
-                // vincitore nella lavagna e poi "ripulisco" status 
-                LOG("serv_client(%u) parte funzione recv_p2p_result\n", 
-                        connessione->port_id);
-                // ricevo risultati p2p, se la "il mio utente ha ricevuto la 
-                // card allora faccio partire il conto"
+                // "aggiudica" la task. Se sono l'ultimo, inserisco la card del 
+                // vincitore nella lavagna e poi "ripulisco" status.
+                // ricevo risultati p2p, se la "il mio utente" ha ricevuto la 
+                // card allora faccio partire il conto
                 if(recv_p2p_result(connessione) == connessione->port_id && 
                         !aquired)
                 {
-                    LOG("serv_client(%u) adesso misuro timestamp aquired\n",
+                    LOG("serv_client(%u) misuro timestamp aquired\n",
                             connessione->port_id);
                     // Faccio partire il timer per ping-pong
                     aquired = time(NULL); 
                 }
                 // Aspetta su condition variable e poi rimetti sent a 0
-                LOG("serv_client(%u) rimetto sent a 0\n", 
+                LOG("serv_client(%u): asta finita\n", 
                         connessione->port_id);
                 sent = 0;
                 continue;
@@ -629,8 +614,8 @@ void* serv_client(void* cl_info)
         {
             send_msg(connessione->socket, instr_to_client, 2);
             LOG("serv_client(%u): mando ping\n"
-                    "\tmi aspetto risposta entro %u\n"
-                    ,connessione->port_id, TIME_PONG_MAX_DELAY);
+                    "\tmi aspetto risposta entro %u\n",
+                    connessione->port_id, TIME_PONG_MAX_DELAY);
             setsockopt(connessione->socket, SOL_SOCKET, SO_RCVTIMEO, 
                     &timeout_pong, sizeof(timeout_pong));
             int msglen = get_msg(connessione->socket, instr_from_client, 2);
@@ -715,7 +700,6 @@ char* get_desc(FILE *cfile)
         ERR("descrizione vuota\n");
         return NULL;
     }
-    LOG("dimensione stringa: %u\n", len);
     if(fseek(cfile, inizio, SEEK_SET))
     {
         ERR("get_desc: errore fseek\n");
@@ -739,7 +723,6 @@ task_card_t *parse_card(FILE *cfile)
     if(correct == EOF)
     {
         free(cc);
-        LOG("Raggiunta la fine del file %s\n", INITIAL_CARDS);
         return NULL;
     }
     if(correct != 4)

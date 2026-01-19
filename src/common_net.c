@@ -75,7 +75,6 @@ int init_listener(struct sockaddr_in* server_addr, uint16_t port)
     server_addr->sin_addr.s_addr = INADDR_ANY;
     server_addr->sin_family = AF_INET;
     server_addr->sin_port = htons(port);
-    LOG("init_listener: inizializzo listener con porta: %d\n", port);
     if(bind(listener, (struct sockaddr*)server_addr, sizeof(*server_addr)) < 0)
     {
         ERR("init_listener errore bind: ");
